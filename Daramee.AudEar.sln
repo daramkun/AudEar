@@ -1,0 +1,63 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 15
+VisualStudioVersion = 15.0.27703.2018
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Daramee.AudEar", "Daramee.AudEar\Daramee.AudEar.vcxproj", "{530F5855-F706-4E02-A6A2-AB72524FF108}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Daramee.AudEar.Test", "Daramee.AudEar.Test\Daramee.AudEar.Test.vcxproj", "{C1773287-74BE-4BA4-883C-C585C60ABF19}"
+	ProjectSection(ProjectDependencies) = postProject
+		{530F5855-F706-4E02-A6A2-AB72524FF108} = {530F5855-F706-4E02-A6A2-AB72524FF108}
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "AudEar", "AudEar", "{BFAFD7BD-08A6-4973-8A5F-0E226E6277D6}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Test", "Test", "{13D6EB57-9BF9-49F9-875D-0A12D2C05D4B}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Daramee.AudEar.FFmpeg", "Daramee.AudEar.FFmpeg\Daramee.AudEar.FFmpeg.vcxproj", "{186F7D3B-4456-4D2B-BEF0-5D28819A3F0C}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x64 = Debug|x64
+		Debug|x86 = Debug|x86
+		Release|x64 = Release|x64
+		Release|x86 = Release|x86
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{530F5855-F706-4E02-A6A2-AB72524FF108}.Debug|x64.ActiveCfg = Debug|x64
+		{530F5855-F706-4E02-A6A2-AB72524FF108}.Debug|x64.Build.0 = Debug|x64
+		{530F5855-F706-4E02-A6A2-AB72524FF108}.Debug|x86.ActiveCfg = Debug|Win32
+		{530F5855-F706-4E02-A6A2-AB72524FF108}.Debug|x86.Build.0 = Debug|Win32
+		{530F5855-F706-4E02-A6A2-AB72524FF108}.Release|x64.ActiveCfg = Release|x64
+		{530F5855-F706-4E02-A6A2-AB72524FF108}.Release|x64.Build.0 = Release|x64
+		{530F5855-F706-4E02-A6A2-AB72524FF108}.Release|x86.ActiveCfg = Release|Win32
+		{530F5855-F706-4E02-A6A2-AB72524FF108}.Release|x86.Build.0 = Release|Win32
+		{C1773287-74BE-4BA4-883C-C585C60ABF19}.Debug|x64.ActiveCfg = Debug|x64
+		{C1773287-74BE-4BA4-883C-C585C60ABF19}.Debug|x64.Build.0 = Debug|x64
+		{C1773287-74BE-4BA4-883C-C585C60ABF19}.Debug|x86.ActiveCfg = Debug|Win32
+		{C1773287-74BE-4BA4-883C-C585C60ABF19}.Debug|x86.Build.0 = Debug|Win32
+		{C1773287-74BE-4BA4-883C-C585C60ABF19}.Release|x64.ActiveCfg = Release|x64
+		{C1773287-74BE-4BA4-883C-C585C60ABF19}.Release|x64.Build.0 = Release|x64
+		{C1773287-74BE-4BA4-883C-C585C60ABF19}.Release|x86.ActiveCfg = Release|Win32
+		{C1773287-74BE-4BA4-883C-C585C60ABF19}.Release|x86.Build.0 = Release|Win32
+		{186F7D3B-4456-4D2B-BEF0-5D28819A3F0C}.Debug|x64.ActiveCfg = Debug|x64
+		{186F7D3B-4456-4D2B-BEF0-5D28819A3F0C}.Debug|x64.Build.0 = Debug|x64
+		{186F7D3B-4456-4D2B-BEF0-5D28819A3F0C}.Debug|x86.ActiveCfg = Debug|Win32
+		{186F7D3B-4456-4D2B-BEF0-5D28819A3F0C}.Debug|x86.Build.0 = Debug|Win32
+		{186F7D3B-4456-4D2B-BEF0-5D28819A3F0C}.Release|x64.ActiveCfg = Release|x64
+		{186F7D3B-4456-4D2B-BEF0-5D28819A3F0C}.Release|x64.Build.0 = Release|x64
+		{186F7D3B-4456-4D2B-BEF0-5D28819A3F0C}.Release|x86.ActiveCfg = Release|Win32
+		{186F7D3B-4456-4D2B-BEF0-5D28819A3F0C}.Release|x86.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{530F5855-F706-4E02-A6A2-AB72524FF108} = {BFAFD7BD-08A6-4973-8A5F-0E226E6277D6}
+		{C1773287-74BE-4BA4-883C-C585C60ABF19} = {13D6EB57-9BF9-49F9-875D-0A12D2C05D4B}
+		{186F7D3B-4456-4D2B-BEF0-5D28819A3F0C} = {BFAFD7BD-08A6-4973-8A5F-0E226E6277D6}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {42045E16-5FBE-40FD-B2B3-C644DDA85020}
+	EndGlobalSection
+EndGlobal
