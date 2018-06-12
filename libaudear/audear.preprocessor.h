@@ -78,12 +78,14 @@
 
 typedef int32_t												error_t;
 #	define AE_ERROR_SUCCESS									0
-#	define AE_ERROR_FAIL									1
-#	define AE_ERROR_INVALID_ARGUMENT						2
-#	define AE_ERROR_NOT_IMPLEMENTED							3
-#	define AE_ERROR_END_OF_FILE								4
-#	define AE_ERROR_INVALID_CALL							5
-#	define AE_ERROR_NOT_SUPPORTED_FORMAT					6
+#	define AE_ERROR_UNKNOWN									-1
+#	define AE_ERROR_FAIL									-2
+#	define AE_ERROR_INVALID_ARGUMENT						-3
+#	define AE_ERROR_NOT_IMPLEMENTED							-4
+#	define AE_ERROR_END_OF_FILE								-5
+#	define AE_ERROR_INVALID_CALL							-6
+#	define AE_ERROR_NOT_SUPPORTED_FORMAT					-7
+#	define AE_ERROR_NOT_SUPPORTED_FEATURE					-8
 #	ifndef SUCCEEDED
 #		define SUCCEEDED(x)									( x == AE_ERROR_SUCCESS )
 #	endif

@@ -11,10 +11,11 @@
 #	endif
 #endif
 
-EXTC error_t AEOSSCEXP AE_createLimeMp3Decoder ( AEBaseAudioDecoder ** decoder );
-EXTC error_t AEOSSCEXP AE_createOpusDecoder ( AEBaseAudioDecoder ** decoder );
+EXTC error_t AEOSSCEXP AE_createLameMp3Decoder ( AEBaseAudioDecoder ** decoder );
+EXTC error_t AEOSSCEXP AE_createOggOpusDecoder ( AEBaseAudioDecoder ** decoder );
 EXTC error_t AEOSSCEXP AE_createOggVorbisDecoder ( AEBaseAudioDecoder ** decoder );
 EXTC error_t AEOSSCEXP AE_createOggFLACDecoder ( AEBaseAudioDecoder ** decoder );
+EXTC error_t AEOSSCEXP AE_createFLACDecoder ( AEBaseAudioDecoder ** decoder );
 EXTC error_t AEOSSCEXP AE_createM4AAACDecoder ( AEBaseAudioDecoder ** decoder );
 
 #endif
