@@ -1,0 +1,67 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 15
+VisualStudioVersion = 15.0.27703.2026
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "libaudear", "libaudear\libaudear.vcxproj", "{F11256CD-42A6-405D-90CF-42FE8ECF8F83}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "AudEar", "AudEar", "{8A360640-07C6-4A22-B6DC-7E27B5B072D2}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Test", "Test", "{514FC19F-B01C-425F-A9AF-16D187ECB0BF}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "libaudear.test", "libaudear.test\libaudear.test.vcxproj", "{5EF4B5A1-5D91-4698-B7DE-9A1CE7E9EA09}"
+	ProjectSection(ProjectDependencies) = postProject
+		{F11256CD-42A6-405D-90CF-42FE8ECF8F83} = {F11256CD-42A6-405D-90CF-42FE8ECF8F83}
+		{65655FFD-ADA8-4513-B66D-93CFFE7CE50C} = {65655FFD-ADA8-4513-B66D-93CFFE7CE50C}
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "libaudear.osscodec", "libaudear.osscodec\libaudear.osscodec.vcxproj", "{65655FFD-ADA8-4513-B66D-93CFFE7CE50C}"
+	ProjectSection(ProjectDependencies) = postProject
+		{F11256CD-42A6-405D-90CF-42FE8ECF8F83} = {F11256CD-42A6-405D-90CF-42FE8ECF8F83}
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x64 = Debug|x64
+		Debug|x86 = Debug|x86
+		Release|x64 = Release|x64
+		Release|x86 = Release|x86
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{F11256CD-42A6-405D-90CF-42FE8ECF8F83}.Debug|x64.ActiveCfg = Debug|x64
+		{F11256CD-42A6-405D-90CF-42FE8ECF8F83}.Debug|x64.Build.0 = Debug|x64
+		{F11256CD-42A6-405D-90CF-42FE8ECF8F83}.Debug|x86.ActiveCfg = Debug|Win32
+		{F11256CD-42A6-405D-90CF-42FE8ECF8F83}.Debug|x86.Build.0 = Debug|Win32
+		{F11256CD-42A6-405D-90CF-42FE8ECF8F83}.Release|x64.ActiveCfg = Release|x64
+		{F11256CD-42A6-405D-90CF-42FE8ECF8F83}.Release|x64.Build.0 = Release|x64
+		{F11256CD-42A6-405D-90CF-42FE8ECF8F83}.Release|x86.ActiveCfg = Release|Win32
+		{F11256CD-42A6-405D-90CF-42FE8ECF8F83}.Release|x86.Build.0 = Release|Win32
+		{5EF4B5A1-5D91-4698-B7DE-9A1CE7E9EA09}.Debug|x64.ActiveCfg = Debug|x64
+		{5EF4B5A1-5D91-4698-B7DE-9A1CE7E9EA09}.Debug|x64.Build.0 = Debug|x64
+		{5EF4B5A1-5D91-4698-B7DE-9A1CE7E9EA09}.Debug|x86.ActiveCfg = Debug|Win32
+		{5EF4B5A1-5D91-4698-B7DE-9A1CE7E9EA09}.Debug|x86.Build.0 = Debug|Win32
+		{5EF4B5A1-5D91-4698-B7DE-9A1CE7E9EA09}.Release|x64.ActiveCfg = Release|x64
+		{5EF4B5A1-5D91-4698-B7DE-9A1CE7E9EA09}.Release|x64.Build.0 = Release|x64
+		{5EF4B5A1-5D91-4698-B7DE-9A1CE7E9EA09}.Release|x86.ActiveCfg = Release|Win32
+		{5EF4B5A1-5D91-4698-B7DE-9A1CE7E9EA09}.Release|x86.Build.0 = Release|Win32
+		{65655FFD-ADA8-4513-B66D-93CFFE7CE50C}.Debug|x64.ActiveCfg = Debug|x64
+		{65655FFD-ADA8-4513-B66D-93CFFE7CE50C}.Debug|x64.Build.0 = Debug|x64
+		{65655FFD-ADA8-4513-B66D-93CFFE7CE50C}.Debug|x86.ActiveCfg = Debug|Win32
+		{65655FFD-ADA8-4513-B66D-93CFFE7CE50C}.Debug|x86.Build.0 = Debug|Win32
+		{65655FFD-ADA8-4513-B66D-93CFFE7CE50C}.Release|x64.ActiveCfg = Release|x64
+		{65655FFD-ADA8-4513-B66D-93CFFE7CE50C}.Release|x64.Build.0 = Release|x64
+		{65655FFD-ADA8-4513-B66D-93CFFE7CE50C}.Release|x86.ActiveCfg = Release|Win32
+		{65655FFD-ADA8-4513-B66D-93CFFE7CE50C}.Release|x86.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{F11256CD-42A6-405D-90CF-42FE8ECF8F83} = {8A360640-07C6-4A22-B6DC-7E27B5B072D2}
+		{5EF4B5A1-5D91-4698-B7DE-9A1CE7E9EA09} = {514FC19F-B01C-425F-A9AF-16D187ECB0BF}
+		{65655FFD-ADA8-4513-B66D-93CFFE7CE50C} = {8A360640-07C6-4A22-B6DC-7E27B5B072D2}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {D4BD0593-C481-4AB0-A3A4-3164FB9E1F41}
+	EndGlobalSection
+EndGlobal

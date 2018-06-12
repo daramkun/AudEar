@@ -1,0 +1,25 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClInclude Include="audear.h" />
+    <ClInclude Include="audear.preprocessor.h" />
+    <ClInclude Include="audear.struct.h" />
+    <ClInclude Include="audear.platform.h" />
+    <ClInclude Include="audear.players.h" />
+    <ClInclude Include="audear.decoders.h" />
+    <ClInclude Include="audear.streams.h" />
+    <ClInclude Include="Streams\Win32\audear.dmoresamplerstream.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Bases\audear.refobj.cpp" />
+    <ClCompile Include="Bases\audear.struct.cpp" />
+    <ClCompile Include="Streams\audear.filestream.cpp" />
+    <ClCompile Include="Streams\audear.memorystream.cpp" />
+    <ClCompile Include="Streams\audear.istream.cpp" />
+    <ClCompile Include="Streams\audear.audiostream.cpp" />
+    <ClCompile Include="Decoders\audear.mfdecoder.cpp" />
+    <ClCompile Include="Players\audear.xaudio2player.cpp" />
+    <ClCompile Include="Players\audear.wasapiplayer.cpp" />
+    <ClCompile Include="Streams\Win32\audear.dmoresamplerstream.cpp" />
+  </ItemGroup>
+</Project>
