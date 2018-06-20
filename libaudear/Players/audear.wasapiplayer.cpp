@@ -59,7 +59,7 @@ public:
 	}
 
 public:
-	virtual error_t setSourceStream ( AEBaseAudioStream * stream )
+	virtual AEERROR setSourceStream ( AEBaseAudioStream * stream )
 	{
 		HRESULT hr;
 
@@ -94,7 +94,7 @@ public:
 			}
 			this->stream.release ();
 			if ( FAILED ( AE_internal_createDMOResamplerStream ( stream, outputFormat, &this->stream ) ) )
-				return AE_ERROR_FAIL;
+				return AEERROR_FAIL;
 		}
 
 		readPos = AETimeSpan ( 0 );
@@ -104,7 +104,7 @@ public:
 	}
 
 public:
-	virtual error_t play ()
+	virtual AEERROR play ()
 	{
 		HRESULT hr;
 		if ( audioRenderClient == nullptr ) return E_FAIL;
@@ -124,7 +124,7 @@ public:
 		}, this, 0, nullptr );
 		return hr;
 	}
-	virtual error_t pause ()
+	virtual AEERROR pause ()
 	{
 		HRESULT hr;
 		if ( audioRenderClient == nullptr ) return E_FAIL;
@@ -138,7 +138,7 @@ public:
 		}
 		return hr;
 	}
-	virtual error_t stop ()
+	virtual AEERROR stop ()
 	{
 		HRESULT hr;
 		if ( audioRenderClient == nullptr ) return E_FAIL;
@@ -159,20 +159,20 @@ public:
 	}
 
 public:
-	virtual error_t getPosition ( AETimeSpan * pos )
+	virtual AEERROR getPosition ( AETimeSpan * pos )
 	{
 		if ( playerState == kAEPLAYERSTATE_STOPPED )
 		{
 			*pos = 0;
-			return AE_ERROR_SUCCESS;
+			return AEERROR_SUCCESS;
 		}
 		else if ( playerState == kAEPLAYERSTATE_PAUSED )
 		{
 			int64_t temp;
-			error_t et = stream->getPosition ( &temp );
+			AEERROR et = stream->getPosition ( &temp );
 			if ( FAILED ( et ) ) return et;
 			*pos = AETimeSpan::fromByteCount ( temp, audioClientWaveFormat->nAvgBytesPerSec );
-			return AE_ERROR_SUCCESS;
+			return AEERROR_SUCCESS;
  		}
 
 		LARGE_INTEGER currentTime;
@@ -180,9 +180,9 @@ public:
 
 		*pos = AETimeSpan ( readPos.getTicks () + ( ( currentTime.QuadPart - readedTime.QuadPart ) * 10000000 / performanceFrequency.QuadPart ) );
 
-		return AE_ERROR_SUCCESS;
+		return AEERROR_SUCCESS;
 	}
-	virtual error_t setPosition ( AETimeSpan time )
+	virtual AEERROR setPosition ( AETimeSpan time )
 	{
 		HRESULT hr;
 
@@ -193,9 +193,9 @@ public:
 			return hr;
 		if ( playerState == kAEPLAYERSTATE_PLAYING )
 			return audioClient->Start ();
-		return AE_ERROR_SUCCESS;
+		return AEERROR_SUCCESS;
 	}
-	virtual error_t getDuration ( AETimeSpan * duration )
+	virtual AEERROR getDuration ( AETimeSpan * duration )
 	{
 		if ( stream == nullptr )
 			return E_FAIL;
@@ -206,20 +206,20 @@ public:
 
 		return decoder->getDuration ( duration );
 	}
-	virtual error_t getState ( AEPLAYERSTATE * state )
+	virtual AEERROR getState ( AEPLAYERSTATE * state )
 	{
 		*state = playerState;
-		return AE_ERROR_SUCCESS;
+		return AEERROR_SUCCESS;
 	}
 
 public:
-	virtual error_t setVolume ( float volume )
+	virtual AEERROR setVolume ( float volume )
 	{
 		if ( audioRenderClient == nullptr )
 			return E_FAIL;
 		return simpleAudioVolume->SetMasterVolume ( volume, nullptr );
 	}
-	virtual error_t getVolume ( float * volume )
+	virtual AEERROR getVolume ( float * volume )
 	{
 		if ( audioRenderClient == nullptr )
 			return E_FAIL;
@@ -269,7 +269,7 @@ public:
 
 		memcpy ( data, &readBuffer [ 0 ], readed );
 
-		audioRenderClient->ReleaseBuffer ( readed / bytesPerFrame, 0 );
+		audioRenderClient->ReleaseBuffer ( ( UINT ) readed / bytesPerFrame, 0 );
 
 		QueryPerformanceCounter ( &readedTime );
 	}
@@ -302,16 +302,16 @@ private:
 	AUDCLNT_SHAREMODE shareMode;
 };
 
-EXTC error_t AEEXP AE_createWASAPIPlayer ( IMMDevice * mmDevice, AUDCLNT_SHAREMODE shareMode, AEBaseAudioPlayer ** player )
+EXTC AEEXP AEERROR AE_createWASAPIPlayer ( IMMDevice * mmDevice, AUDCLNT_SHAREMODE shareMode, AEBaseAudioPlayer ** player )
 {
-	if ( mmDevice == nullptr || player == nullptr ) return AE_ERROR_INVALID_ARGUMENT;
+	if ( mmDevice == nullptr || player == nullptr ) return AEERROR_INVALID_ARGUMENT;
 
 	HRESULT hr;
 	CComPtr<IAudioClient> audioClient;
 	if ( FAILED ( hr = mmDevice->Activate ( __uuidof ( IAudioClient ), CLSCTX_ALL,
 		NULL, ( void** ) &audioClient ) ) )
-		return AE_ERROR_FAIL;
+		return AEERROR_FAIL;
 
 	*player = new AEWASAPIAudioPlayer ( mmDevice, audioClient, shareMode );
-	return AE_ERROR_SUCCESS;
+	return AEERROR_SUCCESS;
 }

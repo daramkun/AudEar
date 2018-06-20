@@ -74,23 +74,27 @@
 #		define OUT
 #	endif
 
+#	ifndef STDCALL
+#		define STDCALL										__stdcall
+#	endif
+
 #	include <cstdint>
 
-typedef int32_t												error_t;
-#	define AE_ERROR_SUCCESS									0
-#	define AE_ERROR_UNKNOWN									-1
-#	define AE_ERROR_FAIL									-2
-#	define AE_ERROR_INVALID_ARGUMENT						-3
-#	define AE_ERROR_NOT_IMPLEMENTED							-4
-#	define AE_ERROR_END_OF_FILE								-5
-#	define AE_ERROR_INVALID_CALL							-6
-#	define AE_ERROR_NOT_SUPPORTED_FORMAT					-7
-#	define AE_ERROR_NOT_SUPPORTED_FEATURE					-8
+typedef int32_t												AEERROR;
+#	define AEERROR_SUCCESS									0
+#	define AEERROR_UNKNOWN									-1
+#	define AEERROR_FAIL										-2
+#	define AEERROR_INVALID_ARGUMENT							-3
+#	define AEERROR_NOT_IMPLEMENTED							-4
+#	define AEERROR_END_OF_FILE								-5
+#	define AEERROR_INVALID_CALL								-6
+#	define AEERROR_NOT_SUPPORTED_FORMAT						-7
+#	define AEERROR_NOT_SUPPORTED_FEATURE					-8
 #	ifndef SUCCEEDED
-#		define SUCCEEDED(x)									( x == AE_ERROR_SUCCESS )
+#		define SUCCEEDED(x)									( x == AEERROR_SUCCESS )
 #	endif
 #	ifndef FAILED
-#		define FAILED(x)									( x != AE_ERROR_SUCCESS )
+#		define FAILED(x)									( x != AEERROR_SUCCESS )
 #	endif
 
 #endif

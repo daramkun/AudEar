@@ -21,5 +21,8 @@
     <ClCompile Include="Players\audear.xaudio2player.cpp" />
     <ClCompile Include="Players\audear.wasapiplayer.cpp" />
     <ClCompile Include="Streams\Win32\audear.dmoresamplerstream.cpp" />
+    <ClCompile Include="audear.cpp" />
+    <ClCompile Include="Bases\audear.platform.cpp" />
+    <ClCompile Include="Streams\audear.equalizationstream.cpp" />
   </ItemGroup>
 </Project>

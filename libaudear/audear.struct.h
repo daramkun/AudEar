@@ -149,7 +149,7 @@ private:
 #include <atomic>
 #endif
 
-struct AESpinLock
+struct AEEXP AESpinLock
 {
 public:
 	inline AESpinLock ()
@@ -186,6 +186,114 @@ private:
 #	else
 	std::atomic_flag spinLock;
 #	endif
+};
+
+struct AEEXP AEBiQuadFilter
+{
+public:
+	double coefficient [ 5 ];
+	float state_x [ 2 ], state_y [ 2 ];
+
+public:
+	inline AEBiQuadFilter ()
+	{
+		resetState ();
+	}
+	inline AEBiQuadFilter ( double a0, double a1, double a2, double b0, double b1, double b2 )
+		: AEBiQuadFilter ()
+	{
+		setCoefficients ( a0, a1, a2, b0, b1, b2 );
+	}
+
+public:
+	inline float transform ( float sample )
+	{
+		double result = coefficient [ 0 ] * sample
+			+ coefficient [ 1 ] * state_x [ 0 ] + coefficient [ 2 ] * state_x [ 1 ]
+			- coefficient [ 3 ] * state_y [ 0 ] - coefficient [ 4 ] * state_y [ 1 ];
+
+		state_x [ 1 ] = state_x [ 0 ];
+		state_x [ 0 ] = sample;
+
+		state_y [ 1 ] = state_y [ 0 ];
+		return state_y [ 0 ] = ( float ) result;
+	}
+
+	inline void resetState ()
+	{
+		memset ( state_x, 0, sizeof ( state_x ) );
+		memset ( state_y, 0, sizeof ( state_y ) );
+	}
+
+	inline void setCoefficients ( double a0, double a1, double a2, double b0, double b1, double b2 )
+	{
+		coefficient [ 0 ] = b0 / a0;
+		coefficient [ 1 ] = b1 / a0;
+		coefficient [ 2 ] = b2 / a0;
+		coefficient [ 3 ] = a1 / a0;
+		coefficient [ 4 ] = a2 / a0;
+	}
+
+	inline void setLowPassFilter ( float samplerate, float cutOffFrequency, float q )
+	{
+		double w0 = 2 * 3.14159265359 * cutOffFrequency / samplerate;
+		double cosw0 = cos ( w0 );
+		double alpha = sin ( w0 ) / ( 2 * q );
+
+		double b0 = ( 1 - cosw0 ) / 2;
+		double b1 = 1 - cosw0;
+		double b2 = ( 1 - cosw0 ) / 2;
+		double a0 = 1 + alpha;
+		double a1 = -2 * cosw0;
+		double a2 = 1 - alpha;
+
+		setCoefficients ( a0, a1, a2, b0, b1, b2 );
+	}
+
+	inline void setHighPassFilter ( float samplerate, float cutOffFrequency, float q )
+	{
+		double w0 = 2 * 3.14159265359 * cutOffFrequency / samplerate;
+		double cosw0 = cos ( w0 );
+		double alpha = sin ( w0 ) / ( 2 * q );
+
+		double b0 = ( 1 + cosw0 ) / 2;
+		double b1 = -( 1 + cosw0 );
+		double b2 = ( 1 + cosw0 ) / 2;
+		double a0 = 1 + alpha;
+		double a1 = -2 * cosw0;
+		double a2 = 1 - alpha;
+
+		setCoefficients ( a0, a1, a2, b0, b1, b2 );
+	}
+
+	inline void setPeakingEq ( float samplerate, float centreFrequency, float q, float dbGain )
+	{
+		double w0 = 2 * 3.14159265359 * centreFrequency / samplerate;
+		double cosw0 = cos ( w0 );
+		double sinw0 = sin ( w0 );
+		double alpha = sinw0 / ( 2 * q );
+		double a = pow ( 10, dbGain / 40 );
+
+		double b0 = 1 + alpha * a;
+		double b1 = -2 * cosw0;
+		double b2 = 1 - alpha * a;
+		double a0 = 1 + alpha / a;
+		double a1 = -2 * cosw0;
+		double a2 = 1 - alpha / a;
+
+		setCoefficients ( a0, a1, a2, b0, b1, b2 );
+	}
+};
+
+struct AEEXP AEEqualizerBand
+{
+public:
+	float frequency, gain, bandwidth;
+
+public:
+	AEEqualizerBand ( float frequency, float gain, float bandwidth )
+		: frequency ( frequency ), gain ( gain ), bandwidth ( bandwidth )
+	{ }
 };
 
 #endif

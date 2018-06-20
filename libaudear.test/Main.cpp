@@ -16,11 +16,12 @@ int main ( void )
 //#define FILENAME TEXT ( "Test.flac" )
 //#define FILENAME TEXT ( "Test5_1ch.flac" )
 //#define FILENAME TEXT ( "TestOggFlac.flac" )
+//#define FILENAME TEXT ( "Test.m4a" )
 
 	COM com;
 	MediaFoundation mf;
 
-	error_t et;
+	AEERROR et;
 	
 	/**/XAudio2 xaudio2;
 	AEAutoPtr<AEBaseAudioPlayer> audioPlayer;
@@ -43,6 +44,7 @@ int main ( void )
 	//if ( FAILED ( et = AE_createFLACDecoder ( &decoder ) ) )
 	//if ( FAILED ( et = AE_createOggFLACDecoder ( &decoder ) ) )
 	if ( FAILED ( et = AE_createLameMp3Decoder ( &decoder ) ) )
+	//if ( FAILED ( et = AE_createM4AAACDecoder ( &decoder ) ) )
 		return -3;
 	if ( FAILED ( et = decoder->initialize ( fileStream ) ) )
 		return -4;
@@ -51,17 +53,35 @@ int main ( void )
 	if ( FAILED ( et = AE_createAudioStream ( decoder, AETimeSpan ( 0, 0, 1, 000 ), &audioStream ) ) )
 		return -5;
 
-	if ( FAILED ( et = audioPlayer->setSourceStream ( audioStream ) ) )
+	AEEqualizerBand bands [] =
+	{
+		{    32,     0, 1.f },
+		{    64, -3.4f, 1.f },
+		{   125,  1.9f, 1.f },
+		{   250,  3.0f, 1.f },
+		{   500,  6.0f, 1.f },
+		{  1000,  3.0f, 1.f },
+		{  2000,  1.7f, 1.f },
+		{  4000, -2.2f, 1.f },
+		{  8000, -4.6f, 1.f },
+		{ 16000, -4.8f, 1.f },
+	};
+
+	AEAutoPtr<AEBaseAudioStream> equalizerStream;
+	if ( FAILED ( et = AE_createEqualizationAudioStream ( audioStream, bands, sizeof ( bands ) / sizeof ( AEEqualizerBand ), &equalizerStream ) ) )
 		return -6;
 
-	if ( FAILED ( et = audioPlayer->play () ) )
+	if ( FAILED ( et = audioPlayer->setSourceStream ( equalizerStream ) ) )
 		return -7;
+
+	if ( FAILED ( et = audioPlayer->play () ) )
+		return -8;
 
 	while ( true )
 	{
 		AEPLAYERSTATE state;
 		if ( FAILED ( et = audioPlayer->getState ( &state ) ) )
-			return -8;
+			return -9;
 
 		if ( state != kAEPLAYERSTATE_PLAYING )
 			break;

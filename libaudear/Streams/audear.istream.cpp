@@ -40,7 +40,7 @@ public:
 public:
 	virtual HRESULT __stdcall Read ( void* pv, ULONG cb, ULONG* pcbRead )
 	{
-		error_t et;
+		AEERROR et;
 
 		bool can;
 		if ( FAILED ( et = stream->canRead ( &can ) ) || !can )

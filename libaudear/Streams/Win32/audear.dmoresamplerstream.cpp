@@ -129,14 +129,14 @@ public:
 	}
 
 public:
-	error_t initialize ( AEBaseAudioStream * baseStream, WAVEFORMATEX * pwfx )
+	AEERROR initialize ( AEBaseAudioStream * baseStream, WAVEFORMATEX * pwfx )
 	{
 		this->baseStream = baseStream;
 
 		HRESULT hr;
 
 		if ( FAILED ( hr = mediaObject.CreateInstance ( __uuidof ( CResamplerMediaObject ) ) ) )
-			return AE_ERROR_FAIL;
+			return AEERROR_FAIL;
 
 		AEWaveFormat waveFormat;
 		baseStream->getWaveFormat ( &waveFormat );
@@ -158,11 +158,11 @@ public:
 		inputBuffer = new MediaBuffer ( inputFormat->nAvgBytesPerSec );
 		outputBuffer = new MediaBuffer ( outputFormat->nAvgBytesPerSec );
 
-		return AE_ERROR_SUCCESS;
+		return AEERROR_SUCCESS;
 	}
 
 public:
-	virtual error_t read ( OUT void * buffer, int64_t length, OUT int64_t * readed )
+	virtual AEERROR read ( OUT void * buffer, int64_t length, OUT int64_t * readed )
 	{
 		spinLock.lock ();
 
@@ -177,7 +177,7 @@ public:
 				bytesToRead = min ( outputFormat->nAvgBytesPerSec * 2, bytesToRead );
 				bytesToRead -= ( bytesToRead % inputFormat->nBlockAlign );
 
-				inputBuffer->SetLength ( bytesToRead );
+				inputBuffer->SetLength ( ( DWORD ) bytesToRead );
 				BYTE * inputByteBuffer;
 				DWORD inputByteBufferLength;
 				inputBuffer->GetBufferAndLength ( &inputByteBuffer, &inputByteBufferLength );
@@ -218,62 +218,62 @@ public:
 
 		spinLock.unlock ();
 
-		return AE_ERROR_SUCCESS;
+		return AEERROR_SUCCESS;
 	}
-	virtual error_t write ( IN const void * data, int64_t length, OUT int64_t * written ) { return E_NOTIMPL; }
-	virtual error_t seek ( AESTREAMSEEK offset, int64_t count, OUT int64_t * seeked )
+	virtual AEERROR write ( IN const void * data, int64_t length, OUT int64_t * written ) { return E_NOTIMPL; }
+	virtual AEERROR seek ( AESTREAMSEEK offset, int64_t count, OUT int64_t * seeked )
 	{
 		int64_t temp;
-		error_t et = baseStream->seek ( offset, AETimeSpan::fromByteCount ( count, outputFormat->nAvgBytesPerSec ).getByteCount ( inputFormat->nAvgBytesPerSec ), &temp );
+		AEERROR et = baseStream->seek ( offset, AETimeSpan::fromByteCount ( count, outputFormat->nAvgBytesPerSec ).getByteCount ( inputFormat->nAvgBytesPerSec ), &temp );
 		if ( FAILED ( et ) )
 			return et;
 		if ( seeked )
 		{
 			*seeked = AETimeSpan::fromByteCount ( temp, inputFormat->nAvgBytesPerSec ).getByteCount ( outputFormat->nAvgBytesPerSec );
 		}
-		return AE_ERROR_SUCCESS;
+		return AEERROR_SUCCESS;
 	}
-	virtual error_t flush () { return baseStream->flush (); }
+	virtual AEERROR flush () { return baseStream->flush (); }
 
 public:
-	virtual error_t getPosition ( OUT int64_t * pos )
+	virtual AEERROR getPosition ( OUT int64_t * pos )
 	{
-		error_t et;
+		AEERROR et;
 		int64_t temp;
 		if ( FAILED ( et = baseStream->getPosition ( &temp ) ) )
 			return et;
 		*pos = AETimeSpan::fromByteCount ( temp, inputFormat->nAvgBytesPerSec ).getByteCount ( outputFormat->nAvgBytesPerSec );
-		return AE_ERROR_SUCCESS;
+		return AEERROR_SUCCESS;
 	}
-	virtual error_t getLength ( OUT int64_t * len )
+	virtual AEERROR getLength ( OUT int64_t * len )
 	{
-		error_t et;
+		AEERROR et;
 		int64_t temp;
 		if ( FAILED ( et = baseStream->getLength ( &temp ) ) )
 			return et;
 		*len = AETimeSpan::fromByteCount ( temp, inputFormat->nAvgBytesPerSec ).getByteCount ( outputFormat->nAvgBytesPerSec );
-		return AE_ERROR_SUCCESS;
+		return AEERROR_SUCCESS;
 	}
 
 public:
-	virtual error_t canSeek ( OUT bool * can ) { return baseStream->canSeek ( can ); }
-	virtual error_t canRead ( OUT bool * can ) { return baseStream->canRead ( can ); }
-	virtual error_t canWrite ( OUT bool * can ) { *can = false; return AE_ERROR_SUCCESS; }
+	virtual AEERROR canSeek ( OUT bool * can ) { return baseStream->canSeek ( can ); }
+	virtual AEERROR canRead ( OUT bool * can ) { return baseStream->canRead ( can ); }
+	virtual AEERROR canWrite ( OUT bool * can ) { *can = false; return AEERROR_SUCCESS; }
 
 public:
-	virtual error_t getBaseDecoder ( OUT AEBaseAudioDecoder ** decoder ) { return baseStream->getBaseDecoder ( decoder ); }
-	virtual error_t getWaveFormat ( OUT AEWaveFormat * format )
+	virtual AEERROR getBaseDecoder ( OUT AEBaseAudioDecoder ** decoder ) { return baseStream->getBaseDecoder ( decoder ); }
+	virtual AEERROR getWaveFormat ( OUT AEWaveFormat * format )
 	{
 		*format = AEWaveFormat ( outputFormat );
-		return AE_ERROR_SUCCESS;
+		return AEERROR_SUCCESS;
 	}
 
 public:
-	virtual error_t setBufferSize ( AETimeSpan length ) { return baseStream->setBufferSize ( length ); }
-	virtual error_t getBufferSize ( OUT AETimeSpan * length ) { return baseStream->getBufferSize ( length ); }
+	virtual AEERROR setBufferSize ( AETimeSpan length ) { return baseStream->setBufferSize ( length ); }
+	virtual AEERROR getBufferSize ( OUT AETimeSpan * length ) { return baseStream->getBufferSize ( length ); }
 
 public:
-	virtual error_t buffering () { return baseStream->buffering (); }
+	virtual AEERROR buffering () { return baseStream->buffering (); }
 
 private:
 	int64_t outputToInput ( int64_t position )
@@ -297,15 +297,15 @@ private:
 	AESpinLock spinLock;
 };
 
-error_t AE_internal_createDMOResamplerStream ( AEBaseAudioStream * baseStream, WAVEFORMATEX * pwfx, AEBaseAudioStream ** stream )
+AEERROR AE_internal_createDMOResamplerStream ( AEBaseAudioStream * baseStream, WAVEFORMATEX * pwfx, AEBaseAudioStream ** stream )
 {
 	*stream = new AEDMOResamplerAudioStream ();
-	error_t et = ( ( AEDMOResamplerAudioStream* ) *stream )->initialize ( baseStream, pwfx );
+	AEERROR et = ( ( AEDMOResamplerAudioStream* ) *stream )->initialize ( baseStream, pwfx );
 	if ( FAILED ( et ) )
 	{
 		( *stream )->release ();
 		*stream = nullptr;
-		return AE_ERROR_FAIL;
+		return AEERROR_FAIL;
 	}
-	return AE_ERROR_SUCCESS;
+	return AEERROR_SUCCESS;
 }

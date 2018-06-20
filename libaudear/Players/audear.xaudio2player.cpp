@@ -22,7 +22,7 @@ public:
 	}
 
 public:
-	virtual error_t setSourceStream ( AEBaseAudioStream * stream )
+	virtual AEERROR setSourceStream ( AEBaseAudioStream * stream )
 	{
 		HRESULT hr;
 
@@ -59,32 +59,32 @@ public:
 	}
 
 public:
-	virtual error_t play ()
+	virtual AEERROR play ()
 	{
 		HRESULT hr;
-		if ( sourceVoice == nullptr ) return AE_ERROR_FAIL;
+		if ( sourceVoice == nullptr ) return AEERROR_FAIL;
 		if ( SUCCEEDED ( hr = sourceVoice->Start () ) )
 		{
 			playerState = kAEPLAYERSTATE_PLAYING;
 			OnBufferEnd ( nullptr );
 		}
-		return SUCCEEDED ( hr ) ? AE_ERROR_SUCCESS : AE_ERROR_FAIL;
+		return SUCCEEDED ( hr ) ? AEERROR_SUCCESS : AEERROR_FAIL;
 	}
-	virtual error_t pause ()
+	virtual AEERROR pause ()
 	{
 		HRESULT hr;
-		if ( sourceVoice == nullptr ) return AE_ERROR_FAIL;
+		if ( sourceVoice == nullptr ) return AEERROR_FAIL;
 		if ( SUCCEEDED ( hr = sourceVoice->Stop () ) )
 		{
 			playerState = kAEPLAYERSTATE_PAUSED;
 		}
-		return SUCCEEDED ( hr ) ? AE_ERROR_SUCCESS : AE_ERROR_FAIL;
+		return SUCCEEDED ( hr ) ? AEERROR_SUCCESS : AEERROR_FAIL;
 	}
-	virtual error_t stop ()
+	virtual AEERROR stop ()
 	{
 		HRESULT hr;
-		error_t et;
-		if ( sourceVoice == nullptr ) return AE_ERROR_FAIL;
+		AEERROR et;
+		if ( sourceVoice == nullptr ) return AEERROR_FAIL;
 		if ( FAILED ( et = stream->seek ( kAESTREAMSEEK_SET, 0, nullptr ) ) )
 			return et;
 		if ( SUCCEEDED ( hr = sourceVoice->Stop () ) )
@@ -94,25 +94,25 @@ public:
 			readPos = 0;
 			setPosition ( AETimeSpan ( 0 ) );
 		}
-		return SUCCEEDED ( hr ) ? AE_ERROR_SUCCESS : AE_ERROR_FAIL;
+		return SUCCEEDED ( hr ) ? AEERROR_SUCCESS : AEERROR_FAIL;
 	}
 
 public:
-	virtual error_t getPosition ( AETimeSpan * pos )
+	virtual AEERROR getPosition ( AETimeSpan * pos )
 	{
 		if ( playerState == kAEPLAYERSTATE_STOPPED )
 		{
 			*pos = 0;
-			return AE_ERROR_SUCCESS;
+			return AEERROR_SUCCESS;
 		}
 		else if ( playerState == kAEPLAYERSTATE_PAUSED )
 		{
-			error_t et;
+			AEERROR et;
 			int64_t streamPos;
 			if ( FAILED ( et = stream->getPosition ( &streamPos ) ) )
 				return et;
 			*pos = AETimeSpan::fromByteCount ( streamPos, byterate );
-			return AE_ERROR_SUCCESS;
+			return AEERROR_SUCCESS;
 		}
 
 		LARGE_INTEGER currentTime;
@@ -120,51 +120,51 @@ public:
 
 		*pos = AETimeSpan ( readPos.getTicks () + ( ( currentTime.QuadPart - readedTime.QuadPart ) * 10000000 / performanceFrequency.QuadPart ) );
 
-		return AE_ERROR_SUCCESS;
+		return AEERROR_SUCCESS;
 	}
-	virtual error_t setPosition ( AETimeSpan pos )
+	virtual AEERROR setPosition ( AETimeSpan pos )
 	{
 		HRESULT hr;
-		error_t et;
+		AEERROR et;
 		if ( playerState == kAEPLAYERSTATE_PLAYING )
 			if ( FAILED ( hr = sourceVoice->Stop () ) )
-				return AE_ERROR_FAIL;
+				return AEERROR_FAIL;
 		if ( FAILED ( et = stream->seek ( kAESTREAMSEEK_SET, pos.getByteCount ( byterate ), nullptr ) ) )
 			return et;
 		if ( playerState == kAEPLAYERSTATE_PLAYING )
-			return FAILED ( sourceVoice->Start () ) ? AE_ERROR_FAIL : AE_ERROR_SUCCESS;
-		return AE_ERROR_SUCCESS;
+			return FAILED ( sourceVoice->Start () ) ? AEERROR_FAIL : AEERROR_SUCCESS;
+		return AEERROR_SUCCESS;
 	}
-	virtual error_t getDuration ( AETimeSpan * duration )
+	virtual AEERROR getDuration ( AETimeSpan * duration )
 	{
 		if ( stream == nullptr )
-			return AE_ERROR_FAIL;
+			return AEERROR_FAIL;
 
 		AEAutoPtr<AEBaseAudioDecoder> decoder;
 		if ( FAILED ( stream->getBaseDecoder ( &decoder ) ) )
-			return AE_ERROR_FAIL;
+			return AEERROR_FAIL;
 
 		return decoder->getDuration ( duration );
 	}
-	virtual error_t getState ( AEPLAYERSTATE * state )
+	virtual AEERROR getState ( AEPLAYERSTATE * state )
 	{
 		*state = playerState;
-		return AE_ERROR_SUCCESS;
+		return AEERROR_SUCCESS;
 	}
 
 public:
-	virtual error_t setVolume ( float volume )
+	virtual AEERROR setVolume ( float volume )
 	{
 		if ( sourceVoice == nullptr )
-			return AE_ERROR_FAIL;
-		return SUCCEEDED ( sourceVoice->SetVolume ( volume ) ) ? AE_ERROR_SUCCESS : AE_ERROR_FAIL;
+			return AEERROR_FAIL;
+		return SUCCEEDED ( sourceVoice->SetVolume ( volume ) ) ? AEERROR_SUCCESS : AEERROR_FAIL;
 	}
-	virtual error_t getVolume ( float * volume )
+	virtual AEERROR getVolume ( float * volume )
 	{
 		if ( sourceVoice == nullptr )
-			return AE_ERROR_FAIL;
+			return AEERROR_FAIL;
 		sourceVoice->GetVolume ( volume );
-		return AE_ERROR_SUCCESS;
+		return AEERROR_SUCCESS;
 	}
 
 public:
@@ -232,14 +232,14 @@ private:
 	AETimeSpan firstSampleTime;
 };
 
-error_t AE_createXAudio2Player ( IXAudio2 * xaudio2, AEBaseAudioPlayer ** audioPlayer )
+AEERROR AE_createXAudio2Player ( IXAudio2 * xaudio2, AEBaseAudioPlayer ** audioPlayer )
 {
 	if ( xaudio2 == nullptr || audioPlayer == nullptr )
-		return AE_ERROR_INVALID_ARGUMENT;
+		return AEERROR_INVALID_ARGUMENT;
 
 	*audioPlayer = new AEXAudioAudioPlayer ( xaudio2 );
 
-	return AE_ERROR_SUCCESS;
+	return AEERROR_SUCCESS;
 }
 
 #endif

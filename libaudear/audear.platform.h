@@ -61,6 +61,12 @@ private:
 	CComPtr<IMMDeviceCollection> collection;
 };
 
+EXTC AEEXP MMAPI* STDCALL AE_createMMapiInterface ();
+EXTC AEEXP void STDCALL AE_destroyMMapiInterface ( MMAPI * api );
+EXTC AEEXP IMMDevice* STDCALL AE_getDefaultDevice ( MMAPI * api );
+EXTC AEEXP size_t STDCALL AE_getDeviceCount ( MMAPI * api );
+EXTC AEEXP IMMDevice* STDCALL AE_getDevice ( MMAPI * api, size_t index );
+
 #			include <xaudio2.h>
 class XAudio2
 {
@@ -85,6 +91,11 @@ private:
 	CComPtr<IXAudio2> xaudio2;
 	IXAudio2MasteringVoice * masteringVoice;
 };
+
+EXTC AEEXP XAudio2* STDCALL AE_createXAudio2Interface ();
+EXTC AEEXP void STDCALL AE_destroyXAudio2Interface ( XAudio2 * xa );
+EXTC AEEXP IXAudio2* STDCALL AE_getIXAudio2 ( XAudio2 * xa );
+EXTC AEEXP IXAudio2MasteringVoice* STDCALL AE_getIXAudio2MasteringVoice ( XAudio2 * xa );
 
 #			include <mfapi.h>
 class MediaFoundation

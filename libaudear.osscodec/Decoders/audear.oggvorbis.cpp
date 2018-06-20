@@ -13,12 +13,12 @@ public:
 	{ }
 
 public:
-	virtual error_t getSampleTime ( OUT AETimeSpan * time ) { *time = this->time; return AE_ERROR_SUCCESS; }
-	virtual error_t getSampleDuration ( OUT AETimeSpan * time ) { *time = duration; return AE_ERROR_SUCCESS; }
+	virtual AEERROR getSampleTime ( OUT AETimeSpan * time ) { *time = this->time; return AEERROR_SUCCESS; }
+	virtual AEERROR getSampleDuration ( OUT AETimeSpan * time ) { *time = duration; return AEERROR_SUCCESS; }
 
 public:
-	virtual error_t lock ( OUT void ** buffer, OUT int64_t * length ) { *buffer = &bytes [ 0 ]; *length = this->length; return AE_ERROR_SUCCESS; }
-	virtual error_t unlock () { return AE_ERROR_SUCCESS; }
+	virtual AEERROR lock ( OUT void ** buffer, OUT int64_t * length ) { *buffer = &bytes [ 0 ]; *length = this->length; return AEERROR_SUCCESS; }
+	virtual AEERROR unlock () { return AEERROR_SUCCESS; }
 
 private:
 	std::shared_ptr<int8_t []> bytes;
@@ -40,7 +40,7 @@ public:
 	}
 
 public:
-	virtual error_t initialize ( IN AEBaseStream * stream )
+	virtual AEERROR initialize ( IN AEBaseStream * stream )
 	{
 		if ( file.datasource != nullptr )
 		{
@@ -94,41 +94,41 @@ public:
 			ov_clear ( &file );
 			switch ( result )
 			{
-				case OV_EREAD: return AE_ERROR_INVALID_CALL;
-				case OV_ENOTVORBIS: return AE_ERROR_INVALID_ARGUMENT;
-				case OV_EVERSION: return AE_ERROR_NOT_SUPPORTED_FORMAT;
-				case OV_EBADHEADER: return AE_ERROR_INVALID_ARGUMENT;
-				case OV_EFAULT: return AE_ERROR_FAIL;
-				default: return AE_ERROR_UNKNOWN;
+				case OV_EREAD: return AEERROR_INVALID_CALL;
+				case OV_ENOTVORBIS: return AEERROR_INVALID_ARGUMENT;
+				case OV_EVERSION: return AEERROR_NOT_SUPPORTED_FORMAT;
+				case OV_EBADHEADER: return AEERROR_INVALID_ARGUMENT;
+				case OV_EFAULT: return AEERROR_FAIL;
+				default: return AEERROR_UNKNOWN;
 			}
 		}
 
 		byterate = ( file.vi->channels * 2 * file.vi->rate );
 
-		return AE_ERROR_SUCCESS;
+		return AEERROR_SUCCESS;
 	}
 
 public:
-	virtual error_t getWaveFormat ( OUT AEWaveFormat * format )
+	virtual AEERROR getWaveFormat ( OUT AEWaveFormat * format )
 	{
 		*format = AEWaveFormat ( file.vi->channels, 16, file.vi->rate, AE_WAVEFORMAT_PCM );
-		return AE_ERROR_SUCCESS;
+		return AEERROR_SUCCESS;
 	}
-	virtual error_t getDuration ( OUT AETimeSpan * duration )
+	virtual AEERROR getDuration ( OUT AETimeSpan * duration )
 	{
 		*duration = AETimeSpan::fromSeconds ( ov_time_total ( &file, -1 ) );
-		return AE_ERROR_SUCCESS;
+		return AEERROR_SUCCESS;
 	}
 
 public:
-	virtual error_t setReadPosition ( AETimeSpan time )
+	virtual AEERROR setReadPosition ( AETimeSpan time )
 	{
 		ov_time_seek ( &file, time.totalSeconds () );
-		return AE_ERROR_SUCCESS;
+		return AEERROR_SUCCESS;
 	}
 
 public:
-	virtual error_t getSample ( OUT AEBaseAudioSample ** sample )
+	virtual AEERROR getSample ( OUT AEBaseAudioSample ** sample )
 	{
 		int length = byterate / 100;
 		int8_t * buffer = new int8_t [ length ];
@@ -139,17 +139,17 @@ public:
 		if ( result == 0 )
 		{
 			delete [] buffer;
-			return AE_ERROR_END_OF_FILE;
+			return AEERROR_END_OF_FILE;
 		}
 		else if ( result == OV_HOLE || result == OV_EBADLINK || result == OV_EINVAL )
 		{
 			delete [] buffer;
-			return AE_ERROR_FAIL;
+			return AEERROR_FAIL;
 		}
 
 		*sample = new AEInternalOggVorbisSample ( buffer, result, current, AETimeSpan::fromByteCount ( result, byterate ) );
 
-		return AE_ERROR_SUCCESS;
+		return AEERROR_SUCCESS;
 	}
 
 private:
@@ -157,8 +157,8 @@ private:
 	int byterate;
 };
 
-error_t AE_createOggVorbisDecoder ( AEBaseAudioDecoder ** decoder )
+AEERROR AE_createOggVorbisDecoder ( AEBaseAudioDecoder ** decoder )
 {
 	*decoder = new AEInternalOggVorbisDecoder ();
-	return AE_ERROR_SUCCESS;
+	return AEERROR_SUCCESS;
 }

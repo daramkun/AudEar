@@ -21,33 +21,33 @@ public:
 	}
 
 public:
-	virtual error_t getSampleTime ( OUT AETimeSpan * time )
+	virtual AEERROR getSampleTime ( OUT AETimeSpan * time )
 	{
 		if ( FAILED ( _sample->GetSampleTime ( ( LONGLONG* ) time ) ) )
-			return AE_ERROR_FAIL;
-		return AE_ERROR_SUCCESS;
+			return AEERROR_FAIL;
+		return AEERROR_SUCCESS;
 	}
-	virtual error_t getSampleDuration ( OUT AETimeSpan * time )
+	virtual AEERROR getSampleDuration ( OUT AETimeSpan * time )
 	{
 		if ( FAILED ( _sample->GetSampleDuration ( ( LONGLONG* ) time ) ) )
-			return AE_ERROR_FAIL;
-		return AE_ERROR_SUCCESS;
+			return AEERROR_FAIL;
+		return AEERROR_SUCCESS;
 	}
 
 public:
-	virtual error_t lock ( OUT void ** buffer, OUT int64_t * length )
+	virtual AEERROR lock ( OUT void ** buffer, OUT int64_t * length )
 	{
 		DWORD temp;
 		if ( FAILED ( _buffer->Lock ( ( BYTE** ) buffer, nullptr, &temp ) ) )
-			return AE_ERROR_FAIL;
+			return AEERROR_FAIL;
 		*length = temp;
-		return AE_ERROR_SUCCESS;
+		return AEERROR_SUCCESS;
 	}
-	virtual error_t unlock ()
+	virtual AEERROR unlock ()
 	{
 		if ( FAILED ( _buffer->Unlock () ) )
-			return AE_ERROR_FAIL;
-		return AE_ERROR_SUCCESS;
+			return AEERROR_FAIL;
+		return AEERROR_SUCCESS;
 	}
 
 private:
@@ -58,73 +58,73 @@ private:
 class AEMFAudioDecoder : public AEBaseAudioDecoder
 {
 public:
-	virtual error_t initialize ( IN AEBaseStream * stream )
+	virtual AEERROR initialize ( IN AEBaseStream * stream )
 	{
-		if ( stream == nullptr ) return AE_ERROR_INVALID_ARGUMENT;
+		if ( stream == nullptr ) return AEERROR_INVALID_ARGUMENT;
 
 		_sourceReader.Release ();
 		_byteStream.Release ();
 		_stream.Release ();
 
 		HRESULT hr;
-		error_t et;
+		AEERROR et;
 		if ( FAILED ( hr = AE_convertStream ( stream, &_stream ) ) )
-			return AE_ERROR_FAIL;
+			return AEERROR_FAIL;
 		if ( FAILED ( hr = MFCreateMFByteStreamOnStream ( _stream, &_byteStream ) ) )
-			return AE_ERROR_FAIL;
+			return AEERROR_FAIL;
 
 		if ( FAILED ( hr = MFCreateSourceReaderFromByteStream ( _byteStream, nullptr, &_sourceReader ) ) )
-			return AE_ERROR_FAIL;
+			return AEERROR_FAIL;
 
 		CComPtr<IMFMediaType> readingAudioMediaType;
 		if ( FAILED ( hr = MFCreateMediaType ( &readingAudioMediaType ) ) )
-			return AE_ERROR_FAIL;
+			return AEERROR_FAIL;
 		if ( FAILED ( hr = readingAudioMediaType->SetGUID ( MF_MT_MAJOR_TYPE, MFMediaType_Audio ) ) )
-			return AE_ERROR_FAIL;
+			return AEERROR_FAIL;
 		if ( FAILED ( hr = readingAudioMediaType->SetGUID ( MF_MT_SUBTYPE, MFAudioFormat_PCM ) ) )
-			return AE_ERROR_FAIL;
+			return AEERROR_FAIL;
 
 		if ( FAILED ( hr = _sourceReader->SetCurrentMediaType ( MF_SOURCE_READER_FIRST_AUDIO_STREAM, nullptr, readingAudioMediaType ) ) )
-			return AE_ERROR_FAIL;
+			return AEERROR_FAIL;
 
 		readingAudioMediaType.Release ();
 
 		if ( FAILED ( hr = _sourceReader->GetCurrentMediaType ( MF_SOURCE_READER_FIRST_AUDIO_STREAM, &readingAudioMediaType ) ) )
-			return AE_ERROR_FAIL;
+			return AEERROR_FAIL;
 
 		WAVEFORMATEX * pwfx;
 		UINT size;
 		if ( FAILED ( hr = MFCreateWaveFormatExFromMFMediaType ( readingAudioMediaType, &pwfx, &size ) ) )
-			return AE_ERROR_FAIL;
+			return AEERROR_FAIL;
 
 		_waveFormat = AEWaveFormat ( pwfx );
 
 		CoTaskMemFree ( pwfx );
 
-		return AE_ERROR_SUCCESS;
+		return AEERROR_SUCCESS;
 	}
 
 public:
-	virtual error_t getWaveFormat ( OUT AEWaveFormat * format )
+	virtual AEERROR getWaveFormat ( OUT AEWaveFormat * format )
 	{
-		if ( format == nullptr ) return AE_ERROR_INVALID_ARGUMENT;
+		if ( format == nullptr ) return AEERROR_INVALID_ARGUMENT;
 		*format = _waveFormat;
-		return AE_ERROR_SUCCESS;
+		return AEERROR_SUCCESS;
 	}
-	virtual error_t getDuration ( OUT AETimeSpan * duration )
+	virtual AEERROR getDuration ( OUT AETimeSpan * duration )
 	{
-		if ( duration == nullptr ) return AE_ERROR_INVALID_ARGUMENT;
+		if ( duration == nullptr ) return AEERROR_INVALID_ARGUMENT;
 
 		HRESULT hr;
 		PROPVARIANT var;
 		if ( FAILED ( hr = _sourceReader->GetPresentationAttribute ( MF_SOURCE_READER_MEDIASOURCE, MF_PD_DURATION, &var ) ) )
-			return AE_ERROR_FAIL;
+			return AEERROR_FAIL;
 		*duration = AETimeSpan ( var.hVal.QuadPart );
-		return AE_ERROR_SUCCESS;
+		return AEERROR_SUCCESS;
 	}
 
 public:
-	virtual error_t setReadPosition ( AETimeSpan time )
+	virtual AEERROR setReadPosition ( AETimeSpan time )
 	{
 		HRESULT hr;
 
@@ -133,27 +133,27 @@ public:
 		position.hVal.QuadPart = time.getTicks ();
 
 		if ( FAILED ( hr = _sourceReader->SetCurrentPosition ( GUID_NULL, position ) ) )
-			return AE_ERROR_FAIL;
+			return AEERROR_FAIL;
 
-		return AE_ERROR_SUCCESS;
+		return AEERROR_SUCCESS;
 	}
 
 public:
-	virtual error_t getSample ( OUT AEBaseAudioSample ** sample )
+	virtual AEERROR getSample ( OUT AEBaseAudioSample ** sample )
 	{
 		HRESULT hr;
 
 		DWORD flags;
 		CComPtr<IMFSample> s;
 		if ( FAILED ( hr = _sourceReader->ReadSample ( MF_SOURCE_READER_FIRST_AUDIO_STREAM, 0, nullptr, &flags, nullptr, &s ) ) )
-			return AE_ERROR_FAIL;
+			return AEERROR_FAIL;
 
 		if ( flags & MF_SOURCE_READERF_ENDOFSTREAM )
-			return AE_ERROR_END_OF_FILE;
+			return AEERROR_END_OF_FILE;
 
 		*sample = new AEMFAudioSample ( s );
 
-		return AE_ERROR_SUCCESS;
+		return AEERROR_SUCCESS;
 	}
 
 private:
@@ -164,11 +164,11 @@ private:
 	AEWaveFormat _waveFormat;
 };
 
-EXTC error_t AEEXP AE_createMediaFoundationDecoder ( AEBaseAudioDecoder ** decoder )
+EXTC AEEXP AEERROR AE_createMediaFoundationDecoder ( AEBaseAudioDecoder ** decoder )
 {
-	if ( decoder == nullptr ) return AE_ERROR_INVALID_ARGUMENT;
+	if ( decoder == nullptr ) return AEERROR_INVALID_ARGUMENT;
 	*decoder = new AEMFAudioDecoder ();
-	return AE_ERROR_SUCCESS;
+	return AEERROR_SUCCESS;
 }
 
 #endif

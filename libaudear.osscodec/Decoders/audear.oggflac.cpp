@@ -25,12 +25,12 @@ public:
 	{ }
 
 public:
-	virtual error_t getSampleTime ( OUT AETimeSpan * time ) { *time = this->time; return AE_ERROR_SUCCESS; }
-	virtual error_t getSampleDuration ( OUT AETimeSpan * time ) { *time = duration; return AE_ERROR_SUCCESS; }
+	virtual AEERROR getSampleTime ( OUT AETimeSpan * time ) { *time = this->time; return AEERROR_SUCCESS; }
+	virtual AEERROR getSampleDuration ( OUT AETimeSpan * time ) { *time = duration; return AEERROR_SUCCESS; }
 
 public:
-	virtual error_t lock ( OUT void ** buffer, OUT int64_t * length ) { *buffer = &bytes [ 0 ]; *length = this->length; return AE_ERROR_SUCCESS; }
-	virtual error_t unlock () { return AE_ERROR_SUCCESS; }
+	virtual AEERROR lock ( OUT void ** buffer, OUT int64_t * length ) { *buffer = &bytes [ 0 ]; *length = this->length; return AEERROR_SUCCESS; }
+	virtual AEERROR unlock () { return AEERROR_SUCCESS; }
 
 private:
 	std::shared_ptr<int8_t []> bytes;
@@ -70,7 +70,7 @@ public:
 	}
 
 public:
-	virtual error_t initialize ( IN AEBaseStream * stream )
+	virtual AEERROR initialize ( IN AEBaseStream * stream )
 	{
 		if ( file )
 		{
@@ -86,13 +86,13 @@ public:
 			[] ( const FLAC__StreamDecoder *decoder, FLAC__byte buffer [], size_t *bytes, void *client_data )
 			-> FLAC__StreamDecoderReadStatus
 		{
-			error_t et;
+			AEERROR et;
 
 			AEBaseStream * stream = ( ( AEInternalOggFLACDecoder * ) client_data )->stream;
 			int64_t readed;
 			if ( FAILED ( et = stream->read ( buffer, *bytes, &readed ) ) )
 			{
-				if ( et == AE_ERROR_END_OF_FILE ) return FLAC__STREAM_DECODER_READ_STATUS_END_OF_STREAM;
+				if ( et == AEERROR_END_OF_FILE ) return FLAC__STREAM_DECODER_READ_STATUS_END_OF_STREAM;
 				else return FLAC__STREAM_DECODER_READ_STATUS_ABORT;
 			}
 			*bytes = readed;
@@ -162,7 +162,7 @@ public:
 		{
 			FLAC__stream_decoder_delete ( file );
 			file = nullptr;
-			return AE_ERROR_UNKNOWN;
+			return AEERROR_UNKNOWN;
 		}
 
 		FLAC__stream_decoder_process_until_end_of_metadata ( file );
@@ -173,53 +173,53 @@ public:
 
 		byterate = ( channels * ( bitsPerSample / 8 ) * samplerate );*/
 		if ( channels == 0 )
-			return AE_ERROR_FAIL;
+			return AEERROR_FAIL;
 
 		if ( !FLAC__stream_decoder_process_single ( file ) )
 		{
 			FLAC__stream_decoder_delete ( file );
 			file = nullptr;
-			return AE_ERROR_FAIL;
+			return AEERROR_FAIL;
 		}
 
 		FLAC__stream_decoder_seek_absolute ( file, 0 );
 
-		return AE_ERROR_SUCCESS;
+		return AEERROR_SUCCESS;
 	}
 
 public:
-	virtual error_t getWaveFormat ( OUT AEWaveFormat * format )
+	virtual AEERROR getWaveFormat ( OUT AEWaveFormat * format )
 	{
 		*format = AEWaveFormat ( channels, bitsPerSample, samplerate, AE_WAVEFORMAT_PCM );
-		return AE_ERROR_SUCCESS;
+		return AEERROR_SUCCESS;
 	}
-	virtual error_t getDuration ( OUT AETimeSpan * duration )
+	virtual AEERROR getDuration ( OUT AETimeSpan * duration )
 	{
 		if ( isOggContainer )
 		{
 			*duration = AETimeSpan ();
-			return AE_ERROR_NOT_SUPPORTED_FEATURE;
+			return AEERROR_NOT_SUPPORTED_FEATURE;
 		}
 		else
 		{
 			uint64_t bytes = FLAC__stream_decoder_get_total_samples ( file );
 			*duration = AETimeSpan::fromByteCount ( bytes * channels * ( bitsPerSample / 8 ), byterate );
 		}
-		return AE_ERROR_SUCCESS;
+		return AEERROR_SUCCESS;
 	}
 
 public:
-	virtual error_t setReadPosition ( AETimeSpan time )
+	virtual AEERROR setReadPosition ( AETimeSpan time )
 	{
 		if ( isOggContainer )
 		{
-			return AE_ERROR_NOT_SUPPORTED_FEATURE;
+			return AEERROR_NOT_SUPPORTED_FEATURE;
 		}
-		return FLAC__stream_decoder_seek_absolute ( file, time.getByteCount ( byterate ) ) ? AE_ERROR_SUCCESS : AE_ERROR_FAIL;
+		return FLAC__stream_decoder_seek_absolute ( file, time.getByteCount ( byterate ) ) ? AEERROR_SUCCESS : AEERROR_FAIL;
 	}
 
 public:
-	virtual error_t getSample ( OUT AEBaseAudioSample ** sample )
+	virtual AEERROR getSample ( OUT AEBaseAudioSample ** sample )
 	{
 		uint64_t bytesPos;
 		if ( isOggContainer )
@@ -227,7 +227,7 @@ public:
 		else
 		{
 			if ( !FLAC__stream_decoder_get_decode_position ( file, &bytesPos ) )
-				return AE_ERROR_FAIL;
+				return AEERROR_FAIL;
 		}
 		AETimeSpan current = AETimeSpan::fromByteCount ( bytesPos, byterate );
 
@@ -235,7 +235,7 @@ public:
 		while ( loop )
 		{
 			if ( !FLAC__stream_decoder_process_single ( file ) )
-				return AE_ERROR_FAIL;
+				return AEERROR_FAIL;
 
 			auto state = FLAC__stream_decoder_get_state ( file );
 			switch ( state )
@@ -245,7 +245,7 @@ public:
 					loop = false;
 					break;
 				case FLAC__STREAM_DECODER_READ_STATUS_END_OF_STREAM:
-					return AE_ERROR_END_OF_FILE;
+					return AEERROR_END_OF_FILE;
 				default:
 					continue;
 			}
@@ -256,7 +256,7 @@ public:
 
 		*sample = new AEInternalOggFLACSample ( buffer, bytesRead, current, AETimeSpan::fromByteCount ( bytesRead, byterate ) );
 
-		return AE_ERROR_SUCCESS;
+		return AEERROR_SUCCESS;
 	}
 
 public:
@@ -272,14 +272,14 @@ public:
 	bool isOggContainer;
 };
 
-error_t AE_createOggFLACDecoder ( AEBaseAudioDecoder ** decoder )
+AEERROR AE_createOggFLACDecoder ( AEBaseAudioDecoder ** decoder )
 {
 	*decoder = new AEInternalOggFLACDecoder ( FLAC__stream_decoder_init_ogg_stream );
-	return AE_ERROR_SUCCESS;
+	return AEERROR_SUCCESS;
 }
 
-error_t AE_createFLACDecoder ( AEBaseAudioDecoder ** decoder )
+AEERROR AE_createFLACDecoder ( AEBaseAudioDecoder ** decoder )
 {
 	*decoder = new AEInternalOggFLACDecoder ( FLAC__stream_decoder_init_stream );
-	return AE_ERROR_SUCCESS;
+	return AEERROR_SUCCESS;
 }

@@ -21,7 +21,7 @@ public:
 	}
 
 public:
-	virtual error_t read ( void * buffer, int64_t length, OUT int64_t * readed )
+	virtual AEERROR read ( void * buffer, int64_t length, OUT int64_t * readed )
 	{
 		int64_t nextPos = arrPosition + length;
 		if ( arrPosition + length > arrLength )
@@ -33,7 +33,7 @@ public:
 		if ( length == 0 && readed )
 		{
 			*readed = 0;
-			return AE_ERROR_END_OF_FILE;
+			return AEERROR_END_OF_FILE;
 		}
 
 		memcpy ( buffer, arr + arrPosition, ( size_t ) length );
@@ -41,9 +41,9 @@ public:
 		if ( readed )
 			*readed = length;
 
-		return AE_ERROR_SUCCESS;
+		return AEERROR_SUCCESS;
 	}
-	virtual error_t write ( const void * buffer, int64_t length, OUT int64_t * written )
+	virtual AEERROR write ( const void * buffer, int64_t length, OUT int64_t * written )
 	{
 		int64_t nextPos = arrPosition + length;
 		if ( capacity == 0 )
@@ -69,7 +69,7 @@ public:
 			if ( arrPosition + 1 == arrLength )
 			{
 				*written = 0;
-				return AE_ERROR_END_OF_FILE;
+				return AEERROR_END_OF_FILE;
 			}
 
 			if ( arrPosition + length > arrLength )
@@ -85,9 +85,9 @@ public:
 		if ( written )
 			*written = length;
 
-		return AE_ERROR_SUCCESS;
+		return AEERROR_SUCCESS;
 	}
-	virtual error_t seek ( AESTREAMSEEK offset, int64_t count, OUT int64_t * seeked )
+	virtual AEERROR seek ( AESTREAMSEEK offset, int64_t count, OUT int64_t * seeked )
 	{
 		switch ( offset )
 		{
@@ -103,34 +103,34 @@ public:
 				arrPosition = arrLength - count - 1;
 				break;
 
-			default: return AE_ERROR_INVALID_ARGUMENT;
+			default: return AEERROR_INVALID_ARGUMENT;
 		}
 		if ( arrPosition >= arrLength )
 			arrPosition = arrLength - 1;
 		if ( seeked ) *seeked = arrPosition;
 
-		return AE_ERROR_SUCCESS;
+		return AEERROR_SUCCESS;
 	}
-	virtual error_t flush () { return AE_ERROR_SUCCESS; }
+	virtual AEERROR flush () { return AEERROR_SUCCESS; }
 
 public:
-	virtual error_t getPosition ( OUT int64_t * pos )
+	virtual AEERROR getPosition ( OUT int64_t * pos )
 	{
-		if ( pos == nullptr ) return AE_ERROR_INVALID_ARGUMENT;
+		if ( pos == nullptr ) return AEERROR_INVALID_ARGUMENT;
 		*pos = arrPosition;
-		return AE_ERROR_SUCCESS;
+		return AEERROR_SUCCESS;
 	}
-	virtual error_t getLength ( OUT int64_t * len )
+	virtual AEERROR getLength ( OUT int64_t * len )
 	{
-		if ( len == nullptr ) return AE_ERROR_INVALID_ARGUMENT;
+		if ( len == nullptr ) return AEERROR_INVALID_ARGUMENT;
 		*len = arrLength;
-		return AE_ERROR_SUCCESS;
+		return AEERROR_SUCCESS;
 	}
 
 public:
-	virtual error_t canSeek ( OUT bool * can ) { *can = true; return AE_ERROR_SUCCESS; }
-	virtual error_t canRead ( OUT bool * can ) { *can = true; return AE_ERROR_SUCCESS; }
-	virtual error_t canWrite ( OUT bool * can ) { *can = true; return AE_ERROR_SUCCESS; }
+	virtual AEERROR canSeek ( OUT bool * can ) { *can = true; return AEERROR_SUCCESS; }
+	virtual AEERROR canRead ( OUT bool * can ) { *can = true; return AEERROR_SUCCESS; }
+	virtual AEERROR canWrite ( OUT bool * can ) { *can = true; return AEERROR_SUCCESS; }
 
 private:
 	uint8_t * arr;
@@ -142,8 +142,8 @@ private:
 	int64_t capacity;
 };
 
-error_t AE_createMemoryStream ( int64_t capacity, OUT AEBaseStream ** stream )
+AEERROR AE_createMemoryStream ( int64_t capacity, OUT AEBaseStream ** stream )
 {
 	*stream = new AEMemoryStream ( capacity );
-	return AE_ERROR_SUCCESS;
+	return AEERROR_SUCCESS;
 }

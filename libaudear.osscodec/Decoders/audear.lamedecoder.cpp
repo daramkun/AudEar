@@ -16,12 +16,12 @@ public:
 	}
 
 public:
-	virtual error_t getSampleTime ( OUT AETimeSpan * time ) { *time = this->time; return AE_ERROR_SUCCESS; }
-	virtual error_t getSampleDuration ( OUT AETimeSpan * time ) { *time = duration; return AE_ERROR_SUCCESS; }
+	virtual AEERROR getSampleTime ( OUT AETimeSpan * time ) { *time = this->time; return AEERROR_SUCCESS; }
+	virtual AEERROR getSampleDuration ( OUT AETimeSpan * time ) { *time = duration; return AEERROR_SUCCESS; }
 
 public:
-	virtual error_t lock ( OUT void ** buffer, OUT int64_t * length ) { *buffer = &bytes [ 0 ]; *length = this->length; return AE_ERROR_SUCCESS; }
-	virtual error_t unlock () { return AE_ERROR_SUCCESS; }
+	virtual AEERROR lock ( OUT void ** buffer, OUT int64_t * length ) { *buffer = &bytes [ 0 ]; *length = this->length; return AEERROR_SUCCESS; }
+	virtual AEERROR unlock () { return AEERROR_SUCCESS; }
 
 private:
 	std::shared_ptr<int8_t []> bytes;
@@ -48,15 +48,15 @@ public:
 	}
 
 public:
-	virtual error_t initialize ( IN AEBaseStream * stream )
+	virtual AEERROR initialize ( IN AEBaseStream * stream )
 	{
 		cache_chunk_position ( stream, posizeCache, &channels, &samplerate );
 
 		if ( posizeCache.size () == 0 )
-			return AE_ERROR_NOT_SUPPORTED_FORMAT;
+			return AEERROR_NOT_SUPPORTED_FORMAT;
 
 		if ( FAILED ( stream->seek ( kAESTREAMSEEK_SET, 0, nullptr ) ) )
-			return AE_ERROR_FAIL;
+			return AEERROR_FAIL;
 
 		this->stream.release ();
 		if ( hip != 0 )
@@ -70,33 +70,33 @@ public:
 
 		nextIndex = 0;
 
-		return AE_ERROR_SUCCESS;
+		return AEERROR_SUCCESS;
 	}
 
 public:
-	virtual error_t getWaveFormat ( OUT AEWaveFormat * format )
+	virtual AEERROR getWaveFormat ( OUT AEWaveFormat * format )
 	{
 		*format = AEWaveFormat ( channels, 16, samplerate );
-		return AE_ERROR_SUCCESS;
+		return AEERROR_SUCCESS;
 	}
-	virtual error_t getDuration ( OUT AETimeSpan * duration )
+	virtual AEERROR getDuration ( OUT AETimeSpan * duration )
 	{
 		*duration = AETimeSpan::fromSeconds ( posizeCache.size () * 0.026125 );
-		return AE_ERROR_SUCCESS;
+		return AEERROR_SUCCESS;
 	}
 
 public:
-	virtual error_t setReadPosition ( AETimeSpan time )
+	virtual AEERROR setReadPosition ( AETimeSpan time )
 	{
 		nextIndex = ( int ) round ( time.totalSeconds () / 0.026125 );
 		auto posize = posizeCache.at ( nextIndex++ );
 		if ( FAILED ( stream->seek ( kAESTREAMSEEK_SET, posize.position, nullptr ) ) )
-			return AE_ERROR_FAIL;
-		return AE_ERROR_SUCCESS;
+			return AEERROR_FAIL;
+		return AEERROR_SUCCESS;
 	}
 
 public:
-	virtual error_t getSample ( OUT AEBaseAudioSample ** sample )
+	virtual AEERROR getSample ( OUT AEBaseAudioSample ** sample )
 	{
 		uint8_t buffer [ 48000 ];
 		int16_t lrPCM [ 2 ] [ 48000 ];
@@ -104,27 +104,27 @@ public:
 		int64_t readed;
 
 		if ( nextIndex >= posizeCache.size () )
-			return AE_ERROR_END_OF_FILE;
+			return AEERROR_END_OF_FILE;
 
 		auto posize = posizeCache.at ( nextIndex++ );
 		
 		int64_t pos;
 		if ( FAILED ( stream->getPosition ( &pos ) ) )
-			return AE_ERROR_FAIL;
+			return AEERROR_FAIL;
 
 		if ( pos != posize.position )
 			if ( FAILED ( stream->seek ( kAESTREAMSEEK_SET, posize.position, nullptr ) ) )
-				return AE_ERROR_FAIL;
+				return AEERROR_FAIL;
 
 		if ( FAILED ( stream->read ( buffer, posize.size, &readed ) ) )
-			return AE_ERROR_FAIL;
+			return AEERROR_FAIL;
 
 		int result = hip_decode1 ( hip, buffer, 0, lrPCM [ 0 ], lrPCM [ 1 ] );
 		if ( result == 0 )
 		{
 			result = hip_decode1 ( hip, buffer, min ( posize.size, readed ), lrPCM [ 0 ], lrPCM [ 1 ] );
 			if ( result == 0 )
-				return AE_ERROR_FAIL;
+				return AEERROR_FAIL;
 		}
 
 		for ( int j = 0; j < result; ++j )
@@ -140,7 +140,7 @@ public:
 		*sample = new AEInternalLameSample ( mixedPCM, result * sizeof ( int16_t ) * channels,
 			AETimeSpan::fromSeconds ( nextIndex - 1 * 0.026125 ), AETimeSpan::fromByteCount ( result, byterate ) );
 
-		return AE_ERROR_SUCCESS;
+		return AEERROR_SUCCESS;
 	}
 
 private:
@@ -155,8 +155,8 @@ private:
 	int64_t startPoint;
 };
 
-error_t AE_createLameMp3Decoder ( AEBaseAudioDecoder ** decoder )
+AEERROR AE_createLameMp3Decoder ( AEBaseAudioDecoder ** decoder )
 {
 	*decoder = new AEInternalLameDecoder ();
-	return AE_ERROR_SUCCESS;
+	return AEERROR_SUCCESS;
 }
