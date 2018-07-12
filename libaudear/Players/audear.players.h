@@ -1,0 +1,18 @@
+#ifndef __AUDEAR_PLAYERS_H__
+#define __AUDEAR_PLAYERS_H__
+
+#if AE_PLATFORM_WINDOWS || AE_PLATFORM_UWP
+typedef enum AEEXP
+{
+	AEWASAPISM_SHARED,
+	AEWASAPISM_EXCLUSIVE,
+} AEWASAPISHAREMODE;
+
+EXTC AEEXP error_t AE_createWASAPIAudioPlayer ( IUnknown * device, AEWASAPISHAREMODE shareMode, AEAUDIOPLAYER ** ret );
+#endif
+
+#if ( AE_PLATFORM_WINDOWS && defined ( USE_OPENAL ) ) || !AE_PLATFORM_WINDOWS && !AE_PLATFORM_UWP 
+EXTC AEEXP error_t AE_createOpenALAudioPlayer ( AEAUDIOPLAYER ** ret );
+#endif
+
+#endif

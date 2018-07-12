@@ -2,14 +2,19 @@
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <ClInclude Include="audear.osscodec.h" />
-    <ClInclude Include="Utility\audear.utility.h" />
+    <ClInclude Include="Decoders\audear.oss.limedecoder.utility.h" />
+    <ClInclude Include="Resources\resource.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="audear.osscodec.cpp" />
-    <ClCompile Include="Decoders\audear.lamedecoder.cpp" />
-    <ClCompile Include="Decoders\audear.oggvorbis.cpp" />
-    <ClCompile Include="Decoders\audear.oggopus.cpp" />
-    <ClCompile Include="Decoders\audear.oggflac.cpp" />
-    <ClCompile Include="Decoders\audear.m4aaac.cpp" />
+    <ClCompile Include="Decoders\audear.oss.limedecoder.cpp" />
+    <ClCompile Include="Decoders\audear.oss.oggvorbisdecoder.cpp" />
+    <ClCompile Include="Decoders\audear.oss.oggopusdecoder.cpp" />
+    <ClCompile Include="Decoders\audear.oss.flacdecoder.cpp" />
+    <ClCompile Include="Decoders\audear.oss.wavdecoder.cpp" />
+    <ClCompile Include="Decoders\audear.oss.wavpackdecoder.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="Resources\libaudear.osscodec.rc" />
   </ItemGroup>
 </Project>

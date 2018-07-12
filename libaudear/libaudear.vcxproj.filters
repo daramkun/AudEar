@@ -2,27 +2,28 @@
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <ClInclude Include="audear.h" />
-    <ClInclude Include="audear.preprocessor.h" />
+    <ClInclude Include="audear.preprocessors.h" />
     <ClInclude Include="audear.struct.h" />
-    <ClInclude Include="audear.platform.h" />
-    <ClInclude Include="audear.players.h" />
-    <ClInclude Include="audear.decoders.h" />
-    <ClInclude Include="audear.streams.h" />
-    <ClInclude Include="Streams\Win32\audear.dmoresamplerstream.h" />
+    <ClInclude Include="audear.interface.h" />
+    <ClInclude Include="Streams\audear.streams.h" />
+    <ClInclude Include="Decoders\audear.decoders.h" />
+    <ClInclude Include="Players\audear.players.h" />
+    <ClInclude Include="Resources\resource.h" />
+    <ClInclude Include="InnerUtilities\MemoryStream.hpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Bases\audear.refobj.cpp" />
-    <ClCompile Include="Bases\audear.struct.cpp" />
-    <ClCompile Include="Streams\audear.filestream.cpp" />
-    <ClCompile Include="Streams\audear.memorystream.cpp" />
-    <ClCompile Include="Streams\audear.istream.cpp" />
-    <ClCompile Include="Streams\audear.audiostream.cpp" />
     <ClCompile Include="Decoders\audear.mfdecoder.cpp" />
-    <ClCompile Include="Players\audear.xaudio2player.cpp" />
+    <ClCompile Include="Base\audear.struct.cpp" />
+    <ClCompile Include="Streams\audear.stream.cpp" />
+    <ClCompile Include="Streams\audear.audiostream.cpp" />
+    <ClCompile Include="Base\audear.interface.cpp" />
     <ClCompile Include="Players\audear.wasapiplayer.cpp" />
-    <ClCompile Include="Streams\Win32\audear.dmoresamplerstream.cpp" />
-    <ClCompile Include="audear.cpp" />
-    <ClCompile Include="Bases\audear.platform.cpp" />
-    <ClCompile Include="Streams\audear.equalizationstream.cpp" />
+    <ClCompile Include="Players\audear.openalplayer.cpp" />
+    <ClCompile Include="Streams\audear.convstreams.cpp" />
+    <ClCompile Include="Decoders\audear.decoderdetector.cpp" />
+    <ClCompile Include="Base\audear.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="Resources\libaudear.rc" />
   </ItemGroup>
 </Project>
