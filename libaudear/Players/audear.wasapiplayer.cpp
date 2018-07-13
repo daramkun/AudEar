@@ -1,317 +1,385 @@
 #include "../audear.h"
-#include "../Streams/Win32/audear.dmoresamplerstream.h"
 
+#if AE_PLATFORM_WINDOWS || AE_PLATFORM_UWP
+
+#include <atlbase.h>
 #include <initguid.h>
 #include <mmdeviceapi.h>
 #include <Audioclient.h>
-#include <Wmcodecdsp.h>
-#include <mediaobj.h>
+#include <memory>
 
-#pragma comment ( lib, "dmoguids.lib" )
-#pragma comment ( lib, "wmcodecdspuuid.lib" )
+#define REFTIMES_PER_SEC									10000000
+#define REFTIMES_PER_MILLISEC								10000
 
-#define REFTIMES_PER_SEC  10000000
-#define REFTIMES_PER_MILLISEC  10000
-
-class AEWASAPIAudioPlayer : public AEBaseAudioPlayer
+class __Runnable
 {
 public:
-	AEWASAPIAudioPlayer ( IMMDevice * device, IAudioClient * audioClient, AUDCLNT_SHAREMODE shareMode )
-		: device ( device ), audioClient ( audioClient ), audioRenderClient ( nullptr ), shareMode ( shareMode )
-		, playerState ( kAEPLAYERSTATE_STOPPED ), renderingThread ( INVALID_HANDLE_VALUE )
+	virtual void Run ( void * obj, const bool & terminate ) PURE;
+};
+
+class __Thread
+{
+public:
+	__Thread ( __Runnable * runnable )
+		: hThread ( INVALID_HANDLE_VALUE ), runnable ( runnable )
 	{
-		HRESULT hr;
 
-		QueryPerformanceFrequency ( &performanceFrequency );
-
-		hr = audioClient->GetMixFormat ( &audioClientWaveFormat );
-
-		if ( audioClientWaveFormat->wFormatTag == WAVE_FORMAT_EXTENSIBLE )
-		{
-			WAVEFORMATEXTENSIBLE * extensible = ( WAVEFORMATEXTENSIBLE * ) audioClientWaveFormat;
-			extensible->SubFormat = KSDATAFORMAT_SUBTYPE_PCM;
-		}
-
-		REFERENCE_TIME hnsRequestedDuration = REFTIMES_PER_SEC;
-		hr = audioClient->Initialize ( shareMode, AUDCLNT_STREAMFLAGS_EVENTCALLBACK,
-			hnsRequestedDuration, 0, audioClientWaveFormat, NULL );
-
-		hEvent = CreateEvent ( nullptr, false, false, nullptr );
-		hr = audioClient->SetEventHandle ( hEvent );
-		hr = audioClient->GetBufferSize ( &audioClientBufferSize );
-
-		bytesPerFrame = audioClientWaveFormat->nBlockAlign;
-
-		hr = audioClient->GetService ( __uuidof( IAudioRenderClient ), ( void ** ) &audioRenderClient );
-		hr = audioClient->GetService ( __uuidof ( ISimpleAudioVolume ), ( void ** ) &simpleAudioVolume );
 	}
-
-	~AEWASAPIAudioPlayer ()
+	~__Thread ()
 	{
-		if ( renderingThread != INVALID_HANDLE_VALUE )
-		{
-			TerminateThread ( renderingThread, 0 );
-			WaitForSingleObject ( renderingThread, INFINITE );
-			renderingThread = INVALID_HANDLE_VALUE;
-		}
-
-		CoTaskMemFree ( audioClientWaveFormat );
+		Terminate ();
 	}
 
 public:
-	virtual AEERROR setSourceStream ( AEBaseAudioStream * stream )
+	bool Run ( void * obj )
 	{
-		HRESULT hr;
+		if ( IsThreadAlive () )
+			return false;
 
-		if ( stream == nullptr )
-			return E_INVALIDARG;
+		DWORD threadId;
+		this->obj = obj;
+		this->terminate = false;
+		hThread = CreateThread ( nullptr, 0, ThreadStart, this, 0, &threadId );
 
-		if ( renderingThread != INVALID_HANDLE_VALUE )
-		{
-			TerminateThread ( renderingThread, 0 );
-			WaitForSingleObject ( renderingThread, INFINITE );
-			renderingThread = INVALID_HANDLE_VALUE;
-		}
+		return ( hThread != INVALID_HANDLE_VALUE );
+	}
 
-		this->stream.release ();
-		this->stream = stream;
+	void Terminate ( bool safeTerminateOnly = false )
+	{
+		terminate = true;
+		if ( WaitForSingleObject ( hThread, 500 ) != WAIT_OBJECT_0 && !safeTerminateOnly )
+			TerminateThread ( hThread, 0 );
+		hThread = INVALID_HANDLE_VALUE;
+	}
 
-		AEAutoPtr<AEBaseAudioDecoder> decoder;
-		if ( FAILED ( hr = stream->getBaseDecoder ( &decoder ) ) )
-			return hr;
-
-		if ( FAILED ( hr = decoder->getWaveFormat ( &waveFormat ) ) )
-			return hr;
-
-		if ( !( AEWaveFormat ( audioClientWaveFormat ) == waveFormat ) )
-		{
-			WAVEFORMATEX * outputFormat;
-			audioClient->GetMixFormat ( &outputFormat );
-			if ( outputFormat->wFormatTag == WAVE_FORMAT_EXTENSIBLE )
-			{
-				WAVEFORMATEXTENSIBLE * extensible = ( WAVEFORMATEXTENSIBLE * ) outputFormat;
-				extensible->SubFormat = KSDATAFORMAT_SUBTYPE_PCM;
-			}
-			this->stream.release ();
-			if ( FAILED ( AE_internal_createDMOResamplerStream ( stream, outputFormat, &this->stream ) ) )
-				return AEERROR_FAIL;
-		}
-
-		readPos = AETimeSpan ( 0 );
-		readedTime.QuadPart = 0;
-
-		return hr;
+	void Join ()
+	{
+		if ( hThread == INVALID_HANDLE_VALUE ) return;
+		if ( !IsThreadAlive () ) return;
+		WaitForSingleObject ( hThread, INFINITE );
+		hThread = INVALID_HANDLE_VALUE;
 	}
 
 public:
-	virtual AEERROR play ()
+	bool IsThreadAlive ()
 	{
-		HRESULT hr;
-		if ( audioRenderClient == nullptr ) return E_FAIL;
-		if ( SUCCEEDED ( hr = audioClient->Start () ) )
-			playerState = kAEPLAYERSTATE_PLAYING;
-		//OnBufferEnd ( ( void * ) FALSE );
-		QueryPerformanceCounter ( &readedTime );
-		renderingThread = CreateThread ( nullptr, 0, [] ( LPVOID ptr ) -> DWORD
-		{
-			AEWASAPIAudioPlayer * player = ( AEWASAPIAudioPlayer * ) ptr;
-			while ( true )
-			{
-				player->OnBufferEnd ( ( void * ) TRUE );
-				Sleep ( 1 );
-			}
-			return 0;
-		}, this, 0, nullptr );
-		return hr;
+		if ( hThread == INVALID_HANDLE_VALUE ) return false;
+		if ( WaitForSingleObject ( hThread, 0 ) != WAIT_OBJECT_0 )
+			return true;
+		hThread = INVALID_HANDLE_VALUE;
+		return false;
 	}
-	virtual AEERROR pause ()
+
+private:
+	static DWORD ThreadStart ( void * ptr )
 	{
-		HRESULT hr;
-		if ( audioRenderClient == nullptr ) return E_FAIL;
-		if ( SUCCEEDED ( hr = audioClient->Stop () ) )
-			playerState = kAEPLAYERSTATE_PAUSED;
-		if ( renderingThread != INVALID_HANDLE_VALUE )
-		{
-			TerminateThread ( renderingThread, 0 );
-			WaitForSingleObject ( renderingThread, INFINITE );
-			renderingThread = INVALID_HANDLE_VALUE;
-		}
-		return hr;
+		__Thread * thread = reinterpret_cast< __Thread* >( ptr );
+		thread->runnable->Run ( thread->obj, thread->terminate );
+		thread->hThread = INVALID_HANDLE_VALUE;
+		return 0;
 	}
-	virtual AEERROR stop ()
+
+private:
+	HANDLE hThread;
+	__Runnable * runnable;
+	void * obj;
+	bool terminate;
+};
+
+class __WASAPIAudioPlayer : public __Runnable
+{
+public:
+	__WASAPIAudioPlayer ( IAudioClient * audioClient, WAVEFORMATEX * pwfx )
+		: _audioClient ( audioClient ), _pwfx ( pwfx ), _bufferThread ( this )
+		, _state ( AEPS_STOPPED ), _sourceStream ( nullptr )
+		, _readedTime ( { 0 } ), _sampleTime ( { 0 } )
 	{
-		HRESULT hr;
-		if ( audioRenderClient == nullptr ) return E_FAIL;
-		if ( FAILED ( hr = stream->seek ( kAESTREAMSEEK_SET, 0, nullptr ) ) )
-			return hr;
-		if ( SUCCEEDED ( hr = audioClient->Stop () ) )
-			playerState = kAEPLAYERSTATE_STOPPED;
-		readedTime.QuadPart = 0;
-		readPos = 0;
-		setPosition ( AETimeSpan ( 0 ) );
-		if ( renderingThread != INVALID_HANDLE_VALUE )
-		{
-			TerminateThread ( renderingThread, 0 );
-			WaitForSingleObject ( renderingThread, INFINITE );
-			renderingThread = INVALID_HANDLE_VALUE;
-		}
-		return hr;
+		QueryPerformanceFrequency ( &_performanceFrequency );
+
+		_hEvent = CreateEvent ( nullptr, false, false, nullptr );
+		audioClient->SetEventHandle ( _hEvent );
+		audioClient->GetBufferSize ( &_audioClientBufferSize );
+
+		audioClient->GetService ( __uuidof( IAudioRenderClient ), ( void** ) &_audioRenderClient );
+		audioClient->GetService ( __uuidof( ISimpleAudioVolume ), ( void** ) &_simpleAudioVolume );
+	}
+	~__WASAPIAudioPlayer ()
+	{
+		stop ();
+		AE_releaseInterface ( ( void ** ) &_sourceStream );
+		CoTaskMemFree ( _pwfx );
+		CloseHandle ( _hEvent );
 	}
 
 public:
-	virtual AEERROR getPosition ( AETimeSpan * pos )
+	error_t play ()
 	{
-		if ( playerState == kAEPLAYERSTATE_STOPPED )
+		if ( _state == AEPS_PLAYING ) return AEERROR_NOERROR;
+
+		if ( FAILED ( _audioClient->Start () ) )
+			return AEERROR_FAIL;
+
+		_bufferThread.Run ( nullptr );
+
+		_state = AEPS_PLAYING;
+
+		return AEERROR_NOERROR;
+	}
+	error_t pause ()
+	{
+		if ( _state == AEPS_PAUSED ) return AEERROR_NOERROR;
+
+		_bufferThread.Terminate ( true );
+		_bufferThread.Join ();
+
+		_audioClient->Stop ();
+
+		_state = AEPS_PAUSED;
+
+		return AEERROR_NOERROR;
+	}
+	error_t stop ()
+	{
+		if ( _state == AEPS_STOPPED ) return AEERROR_NOERROR;
+
+		_bufferThread.Terminate ( true );
+		_bufferThread.Join ();
+
+		_audioClient->Stop ();
+
+		_sourceStream->seek ( _sourceStream->object, 0, AESO_BEGIN );
+
+		_state = AEPS_STOPPED;
+
+		return AEERROR_NOERROR;
+	}
+
+public:
+	error_t state ( AEPLAYERSTATE * state )
+	{
+		*state = _state;
+		return AEERROR_NOERROR;
+	}
+
+public:
+	error_t getDuration ( AETIMESPAN * timeSpan )
+	{
+		if ( _sourceStream == nullptr ) return AEERROR_INVALID_CALL;
+		int64_t temp = _sourceStream->length ( _sourceStream->object );
+		*timeSpan = AETIMESPAN_initializeWithByteCount ( temp, _pwfx->nAvgBytesPerSec );
+		return AEERROR_NOERROR;
+	}
+	error_t getPosition ( AETIMESPAN * timeSpan )
+	{
+		if ( _sourceStream == nullptr ) return AEERROR_INVALID_CALL;
+		if ( _state == AEPS_STOPPED )
 		{
-			*pos = 0;
-			return AEERROR_SUCCESS;
+			timeSpan->ticks = 0;
+			return AEERROR_NOERROR;
 		}
-		else if ( playerState == kAEPLAYERSTATE_PAUSED )
+		else if ( _state == AEPS_PAUSED )
 		{
-			int64_t temp;
-			AEERROR et = stream->getPosition ( &temp );
-			if ( FAILED ( et ) ) return et;
-			*pos = AETimeSpan::fromByteCount ( temp, audioClientWaveFormat->nAvgBytesPerSec );
-			return AEERROR_SUCCESS;
- 		}
+			int64_t temp = _sourceStream->tell ( _sourceStream->object );
+			*timeSpan = AETIMESPAN_initializeWithByteCount ( temp, _pwfx->nAvgBytesPerSec );
+			return AEERROR_NOERROR;
+		}
 
 		LARGE_INTEGER currentTime;
 		QueryPerformanceCounter ( &currentTime );
 
-		*pos = AETimeSpan ( readPos.getTicks () + ( ( currentTime.QuadPart - readedTime.QuadPart ) * 10000000 / performanceFrequency.QuadPart ) );
+		timeSpan->ticks = _sampleTime.ticks + ( ( currentTime.QuadPart - _readedTime.QuadPart ) * 10000000 / _performanceFrequency.QuadPart );
 
-		return AEERROR_SUCCESS;
+		return AEERROR_NOERROR;
 	}
-	virtual AEERROR setPosition ( AETimeSpan time )
+	error_t setPosition ( AETIMESPAN timeSpan )
 	{
-		HRESULT hr;
-
-		if ( playerState == kAEPLAYERSTATE_PLAYING )
-			if ( FAILED ( hr = audioClient->Stop () ) )
-				return hr;
-		if ( FAILED ( hr = stream->seek ( kAESTREAMSEEK_SET, time.getByteCount ( audioClientWaveFormat->nAvgBytesPerSec ), nullptr ) ) )
-			return hr;
-		if ( playerState == kAEPLAYERSTATE_PLAYING )
-			return audioClient->Start ();
-		return AEERROR_SUCCESS;
-	}
-	virtual AEERROR getDuration ( AETimeSpan * duration )
-	{
-		if ( stream == nullptr )
-			return E_FAIL;
-
-		AEAutoPtr<AEBaseAudioDecoder> decoder;
-		if ( FAILED ( stream->getBaseDecoder ( &decoder ) ) )
-			return E_FAIL;
-
-		return decoder->getDuration ( duration );
-	}
-	virtual AEERROR getState ( AEPLAYERSTATE * state )
-	{
-		*state = playerState;
-		return AEERROR_SUCCESS;
+		if ( _sourceStream == nullptr ) return AEERROR_INVALID_CALL;
+		_sourceStream->seek ( _sourceStream->object, ( int64_t ) ( AETIMESPAN_totalSeconds ( timeSpan ) * _pwfx->nAvgBytesPerSec ), AESO_BEGIN );
+		return AEERROR_NOERROR;
 	}
 
 public:
-	virtual AEERROR setVolume ( float volume )
+	error_t getVolume ( float * vol )
 	{
-		if ( audioRenderClient == nullptr )
-			return E_FAIL;
-		return simpleAudioVolume->SetMasterVolume ( volume, nullptr );
+		if ( FAILED ( _simpleAudioVolume->GetMasterVolume ( vol ) ) )
+			return AEERROR_FAIL;
+		return AEERROR_NOERROR;
 	}
-	virtual AEERROR getVolume ( float * volume )
+	error_t setVolume ( float vol )
 	{
-		if ( audioRenderClient == nullptr )
-			return E_FAIL;
-		return simpleAudioVolume->GetMasterVolume ( volume );
+		if ( FAILED ( _simpleAudioVolume->SetMasterVolume ( vol, nullptr ) ) )
+			return AEERROR_FAIL;
+		return AEERROR_NOERROR;
 	}
 
 public:
-	void OnBufferEnd ( bool wait )
+	error_t setSource ( AEAUDIOSTREAM * audioStream )
 	{
-		if ( playerState != kAEPLAYERSTATE_PLAYING )
-			return;
-		else
-		{
+		if ( audioStream == nullptr )
+			return AEERROR_ARGUMENT_IS_NULL;
 
+		stop ();
+
+		AE_releaseInterface ( ( void ** ) &_sourceStream );
+
+		_sourceStream = audioStream;
+		AE_retainInterface ( _sourceStream );
+
+		AEWAVEFORMAT pwfxConv = AEWAVEFORMAT_waveFormatFromWaveFormatEX ( _pwfx ), streamWf;
+		_sourceStream->getWaveFormat ( _sourceStream->object, &streamWf );
+		if ( memcmp ( &pwfxConv, &streamWf, sizeof ( AEWAVEFORMAT ) ) != 0 )
+		{
+			AEAUDIOSTREAM * dmoResampler;
+			if ( ISERROR ( AE_createDmoResamplerAudioStream ( _sourceStream, _pwfx, &dmoResampler ) ) )
+				return AEERROR_FAIL;
+			AE_releaseInterface ( ( void ** ) &_sourceStream );
+			_sourceStream = dmoResampler;
 		}
 
-		HRESULT hr;
+		return AEERROR_NOERROR;
+	}
 
-		if ( wait )
-			WaitForSingleObject ( hEvent, INFINITE );
+public:
+	virtual void Run ( void * obj, const bool & terminate )
+	{
+		QueryPerformanceCounter ( &_readedTime );
 
-		UINT paddingFrame;
-		if ( FAILED ( audioClient->GetCurrentPadding ( &paddingFrame ) ) )
-			return;
-
-		UINT32 availableFrames = audioClientBufferSize - paddingFrame;
-		int actualSize = availableFrames * bytesPerFrame;
-
-		std::shared_ptr<BYTE []> readBuffer ( new BYTE [ actualSize ] );
-		int64_t readed;
-		if ( FAILED ( hr = stream->read ( &readBuffer [ 0 ], actualSize, &readed ) ) )
+		while ( !terminate )
 		{
-			playerState = kAEPLAYERSTATE_STOPPED;
-			readedTime.QuadPart = 0;
-			readPos = 0;
-			return;
+			if ( WaitForSingleObject ( _hEvent, 1000 ) == WAIT_TIMEOUT )
+			{
+				_state = AEPS_STOPPED;
+				_readedTime.QuadPart = 0;
+				_sampleTime.ticks = 0;
+				return;
+			}
+
+			UINT paddingFrame;
+			if ( FAILED ( _audioClient->GetCurrentPadding ( &paddingFrame ) ) )
+				return;
+
+			if ( _audioClientBufferSize == paddingFrame )
+				continue;
+
+			UINT32 availableFrames = _audioClientBufferSize - paddingFrame;
+			int actualSize = availableFrames * _pwfx->nBlockAlign;
+
+			if ( availableFrames <= 10 )
+				continue;
+
+			std::shared_ptr<BYTE []> readBuffer ( new BYTE [ actualSize ] );
+			int64_t readed = _sourceStream->read ( _sourceStream->object, &readBuffer [ 0 ], actualSize );
+			if ( readed == 0 )
+			{
+				_state = AEPS_STOPPED;
+				_readedTime.QuadPart = 0;
+				_sampleTime.ticks = 0;
+				return;
+			}
+			if ( readed == -1 )
+			{
+				Sleep ( 1 );
+				continue;
+			}
+
+			int64_t pos = _sourceStream->tell ( _sourceStream->object );
+			_sampleTime = AETIMESPAN_initializeWithSeconds ( pos / ( double ) _pwfx->nAvgBytesPerSec );
+
+			BYTE * data;
+			if ( FAILED ( _audioRenderClient->GetBuffer ( availableFrames, &data ) ) )
+				continue;
+
+			memcpy ( data, &readBuffer [ 0 ], readed );
+
+			_audioRenderClient->ReleaseBuffer ( ( UINT ) readed / _pwfx->nBlockAlign, 0 );
+
+			QueryPerformanceCounter ( &_readedTime );
+
+			Sleep ( 1 );
 		}
-
-		//readPos += AETimeSpan::fromByteCount ( readed, waveFormat.getByteRate () );
-		int64_t pos;
-		stream->getPosition ( &pos );
-		readPos = AETimeSpan::fromByteCount ( pos, audioClientWaveFormat->nAvgBytesPerSec );
-
-		BYTE * data;
-		if ( FAILED ( hr = audioRenderClient->GetBuffer ( availableFrames, &data ) ) )
-			return;
-
-		memcpy ( data, &readBuffer [ 0 ], readed );
-
-		audioRenderClient->ReleaseBuffer ( ( UINT ) readed / bytesPerFrame, 0 );
-
-		QueryPerformanceCounter ( &readedTime );
 	}
 
 private:
-	CComPtr<IMMDevice> device;
-	CComPtr<IAudioClient> audioClient;
-	CComPtr<IAudioRenderClient> audioRenderClient;
-	CComPtr<ISimpleAudioVolume> simpleAudioVolume;
-	AEAutoPtr<AEBaseAudioStream> stream;
+	CComPtr<IAudioClient> _audioClient;
+	CComPtr<IAudioRenderClient> _audioRenderClient;
+	CComPtr<ISimpleAudioVolume> _simpleAudioVolume;
 
-	HANDLE hEvent;
-	UINT audioClientBufferSize;
-	int bytesPerFrame;
+	HANDLE _hEvent;
+	WAVEFORMATEX * _pwfx;
+	UINT _audioClientBufferSize;
 
-	WAVEFORMATEX * audioClientWaveFormat;
-	AEWaveFormat waveFormat;
+	AEPLAYERSTATE _state;
+	LARGE_INTEGER _performanceFrequency;
+	LARGE_INTEGER _readedTime;
+	AETIMESPAN _sampleTime;
 
-	AEPLAYERSTATE playerState;
+	AEAUDIOSTREAM * _sourceStream;
 
-	AETimeSpan readPos;
-	AETimeSpan playingPos;
-
-	LARGE_INTEGER performanceFrequency;
-	LARGE_INTEGER readedTime;
-	AETimeSpan firstSampleTime;
-
-	HANDLE renderingThread;
-
-	AUDCLNT_SHAREMODE shareMode;
+	__Thread _bufferThread;
 };
 
-EXTC AEEXP AEERROR AE_createWASAPIPlayer ( IMMDevice * mmDevice, AUDCLNT_SHAREMODE shareMode, AEBaseAudioPlayer ** player )
+IMMDevice * __getDefaultMMDevice ()
 {
-	if ( mmDevice == nullptr || player == nullptr ) return AEERROR_INVALID_ARGUMENT;
-
 	HRESULT hr;
+	CComPtr<IMMDeviceEnumerator> devEnum;
+	if ( FAILED ( hr = CoCreateInstance ( __uuidof ( MMDeviceEnumerator ), nullptr, CLSCTX_ALL,
+		__uuidof( IMMDeviceEnumerator ), ( void ** ) &devEnum ) ) )
+		return nullptr;
+	CComPtr<IMMDevice> dev;
+	if ( FAILED ( devEnum->GetDefaultAudioEndpoint ( eRender, eConsole, &dev ) ) )
+		return nullptr;
+	return dev.Detach ();
+}
+
+error_t AE_createWASAPIAudioPlayer ( IUnknown * device, AEWASAPISHAREMODE shareMode, AEAUDIOPLAYER ** ret )
+{
+	CComQIPtr<IMMDevice> mmDevice = device;
+	if ( mmDevice == nullptr )
+	{
+		mmDevice = __getDefaultMMDevice ();
+		if ( mmDevice == nullptr )
+			return AEERROR_ARGUMENT_IS_NULL;
+	}
+
 	CComPtr<IAudioClient> audioClient;
-	if ( FAILED ( hr = mmDevice->Activate ( __uuidof ( IAudioClient ), CLSCTX_ALL,
-		NULL, ( void** ) &audioClient ) ) )
+	if ( FAILED ( mmDevice->Activate ( __uuidof( IAudioClient ), CLSCTX_ALL, nullptr, ( void ** ) &audioClient ) ) )
+		return AEERROR_NOT_SUPPORTED_FEATURE;
+
+	WAVEFORMATEX * pwfx;
+	if ( FAILED ( audioClient->GetMixFormat ( &pwfx ) ) )
 		return AEERROR_FAIL;
 
-	*player = new AEWASAPIAudioPlayer ( mmDevice, audioClient, shareMode );
-	return AEERROR_SUCCESS;
+	if ( pwfx->wFormatTag == WAVE_FORMAT_EXTENSIBLE )
+	{
+		WAVEFORMATEXTENSIBLE * extensible = ( WAVEFORMATEXTENSIBLE * ) pwfx;
+		extensible->SubFormat = KSDATAFORMAT_SUBTYPE_PCM;
+	}
+	else if ( pwfx->wFormatTag == WAVE_FORMAT_IEEE_FLOAT )
+	{
+		pwfx->wFormatTag = WAVE_FORMAT_PCM;
+	}
+
+	if ( FAILED ( audioClient->Initialize ( ( AUDCLNT_SHAREMODE ) shareMode, AUDCLNT_STREAMFLAGS_EVENTCALLBACK,
+		REFTIMES_PER_SEC, 0, pwfx, nullptr ) ) )
+		return AEERROR_NOT_SUPPORTED_FEATURE;
+
+	AEAUDIOPLAYER * player = AE_allocInterfaceType ( AEAUDIOPLAYER );
+	player->object = new __WASAPIAudioPlayer ( audioClient, pwfx );
+	player->free = [] ( void * obj ) { delete reinterpret_cast< __WASAPIAudioPlayer* >( obj ); };
+	player->tag = "AudEar WASAPI Audio Player";
+	player->play = [] ( void * obj ) { return reinterpret_cast< __WASAPIAudioPlayer* >( obj )->play (); };
+	player->pause = [] ( void * obj ) { return reinterpret_cast< __WASAPIAudioPlayer* >( obj )->pause (); };
+	player->stop = [] ( void * obj ) { return reinterpret_cast< __WASAPIAudioPlayer* >( obj )->stop (); };
+	player->getDuration = [] ( void * obj, AETIMESPAN * timeSpan ) { return reinterpret_cast< __WASAPIAudioPlayer* >( obj )->getDuration ( timeSpan ); };
+	player->getPosition = [] ( void * obj, AETIMESPAN * timeSpan ) { return reinterpret_cast< __WASAPIAudioPlayer* >( obj )->getPosition ( timeSpan ); };
+	player->setPosition = [] ( void * obj, AETIMESPAN timeSpan ) { return reinterpret_cast< __WASAPIAudioPlayer* >( obj )->setPosition ( timeSpan ); };
+	player->state = [] ( void * obj, AEPLAYERSTATE * ps ) { return reinterpret_cast< __WASAPIAudioPlayer* >( obj )->state ( ps ); };
+	player->setSource = [] ( void * obj, AEAUDIOSTREAM * stream ) { return reinterpret_cast< __WASAPIAudioPlayer* >( obj )->setSource ( stream ); };
+	player->getVolume = [] ( void * obj, float * vol ) { return reinterpret_cast< __WASAPIAudioPlayer* >( obj )->getVolume ( vol ); };
+	player->setVolume = [] ( void * obj, float vol ) { return reinterpret_cast< __WASAPIAudioPlayer* >( obj )->setVolume ( vol ); };
+
+	*ret = player;
+
+	return AEERROR_NOERROR;
 }
+#endif

@@ -20,7 +20,7 @@
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>15.0</VCProjectVersion>
-    <ProjectGuid>{65655FFD-ADA8-4513-B66D-93CFFE7CE50C}</ProjectGuid>
+    <ProjectGuid>{8ECA67E6-0194-4278-BD13-22090BEA3439}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>libaudearosscodec</RootNamespace>
     <WindowsTargetPlatformVersion>10.0.17134.0</WindowsTargetPlatformVersion>
@@ -72,23 +72,23 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
-    <OutDir>..\Build\$(Configuration)_$(PlatformTarget)\</OutDir>
-    <IntDir>..\Build\Temp\$(Configuration)_$(PlatformTarget)\$(ProjectName)\</IntDir>
+    <OutDir>..\Build\$(Configuration)\$(PlatformTarget)\</OutDir>
+    <IntDir>..\Build\Temp\$(Configuration)\$(PlatformTarget)\$(ProjectName)\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>true</LinkIncremental>
-    <OutDir>..\Build\$(Configuration)_$(PlatformTarget)\</OutDir>
-    <IntDir>..\Build\Temp\$(Configuration)_$(PlatformTarget)\$(ProjectName)\</IntDir>
+    <OutDir>..\Build\$(Configuration)\$(PlatformTarget)\</OutDir>
+    <IntDir>..\Build\Temp\$(Configuration)\$(PlatformTarget)\$(ProjectName)\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
-    <OutDir>..\Build\$(Configuration)_$(PlatformTarget)\</OutDir>
-    <IntDir>..\Build\Temp\$(Configuration)_$(PlatformTarget)\$(ProjectName)\</IntDir>
+    <OutDir>..\Build\$(Configuration)\$(PlatformTarget)\</OutDir>
+    <IntDir>..\Build\Temp\$(Configuration)\$(PlatformTarget)\$(ProjectName)\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <OutDir>..\Build\$(Configuration)_$(PlatformTarget)\</OutDir>
-    <IntDir>..\Build\Temp\$(Configuration)_$(PlatformTarget)\$(ProjectName)\</IntDir>
+    <OutDir>..\Build\$(Configuration)\$(PlatformTarget)\</OutDir>
+    <IntDir>..\Build\Temp\$(Configuration)\$(PlatformTarget)\$(ProjectName)\</IntDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
@@ -98,11 +98,12 @@
       <PreprocessorDefinitions>_DEBUG;LIBAUDEAROSSCODEC_EXPORTS;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>..\libaudear;..\ExternalLibs\include;..\ExternalLibs\include\opus;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <WholeProgramOptimization>false</WholeProgramOptimization>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Windows</SubSystem>
-      <AdditionalLibraryDirectories>..\ExternalLibs\lib\$(PlatformTarget);..\Build\$(Configuration)_$(PlatformTarget)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>..\Build\$(Configuration)\$(PlatformTarget);..\ExternalLibs\lib\$(PlatformTarget);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
@@ -117,7 +118,7 @@
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Windows</SubSystem>
-      <AdditionalLibraryDirectories>..\ExternalLibs\lib\$(PlatformTarget);..\Build\$(Configuration)_$(PlatformTarget)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>..\Build\$(Configuration)\$(PlatformTarget);..\ExternalLibs\lib\$(PlatformTarget);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -136,7 +137,7 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Windows</SubSystem>
-      <AdditionalLibraryDirectories>..\ExternalLibs\lib\$(PlatformTarget);..\Build\$(Configuration)_$(PlatformTarget)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>..\Build\$(Configuration)\$(PlatformTarget);..\ExternalLibs\lib\$(PlatformTarget);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -155,20 +156,25 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Windows</SubSystem>
-      <AdditionalLibraryDirectories>..\ExternalLibs\lib\$(PlatformTarget);..\Build\$(Configuration)_$(PlatformTarget)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>..\Build\$(Configuration)\$(PlatformTarget);..\ExternalLibs\lib\$(PlatformTarget);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="audear.osscodec.h" />
-    <ClInclude Include="Utility\audear.utility.h" />
+    <ClInclude Include="Decoders\audear.oss.limedecoder.utility.h" />
+    <ClInclude Include="Resources\resource.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="audear.osscodec.cpp" />
-    <ClCompile Include="Decoders\audear.lamedecoder.cpp" />
-    <ClCompile Include="Decoders\audear.m4aaac.cpp" />
-    <ClCompile Include="Decoders\audear.oggflac.cpp" />
-    <ClCompile Include="Decoders\audear.oggopus.cpp" />
-    <ClCompile Include="Decoders\audear.oggvorbis.cpp" />
+    <ClCompile Include="Decoders\audear.oss.flacdecoder.cpp" />
+    <ClCompile Include="Decoders\audear.oss.limedecoder.cpp" />
+    <ClCompile Include="Decoders\audear.oss.oggopusdecoder.cpp" />
+    <ClCompile Include="Decoders\audear.oss.oggvorbisdecoder.cpp" />
+    <ClCompile Include="Decoders\audear.oss.wavdecoder.cpp" />
+    <ClCompile Include="Decoders\audear.oss.wavpackdecoder.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="Resources\libaudear.osscodec.rc" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

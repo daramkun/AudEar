@@ -2,244 +2,253 @@
 
 #if AE_PLATFORM_WINDOWS || AE_PLATFORM_UWP
 
+#include <atlbase.h>
 #include <xaudio2.h>
 #pragma comment ( lib, "XAudio2.lib" )
 
-class AEXAudioAudioPlayer : public AEBaseAudioPlayer, public IXAudio2VoiceCallback
+class __XAudio2AudioPlayer : public IXAudio2VoiceCallback
 {
 public:
-	AEXAudioAudioPlayer ( IXAudio2 * xaudio2 )
-		: xaudio2 ( xaudio2 ), sourceVoice ( nullptr )
-		, playerState ( kAEPLAYERSTATE_STOPPED )
+	__XAudio2AudioPlayer ( XAUDIO2_PROCESSOR processor )
+		:  _state ( AEPS_STOPPED ), _sourceStream ( nullptr ), _sourceVoice ( nullptr )
+		, _readedTime ( { 0 } ), _sampleTime ( { 0 } )
 	{
-		QueryPerformanceFrequency ( &performanceFrequency );
+		QueryPerformanceFrequency ( &_performanceFrequency );
+
+		XAudio2Create ( &_xaudio2, 0, processor );
+		_xaudio2->CreateMasteringVoice ( &_masteringVoice );
+
+		_xaudio2->StartEngine ();
 	}
-
-	~AEXAudioAudioPlayer ()
+	~__XAudio2AudioPlayer ()
 	{
-		if ( sourceVoice )
-			sourceVoice->DestroyVoice ();
-	}
+		if ( _sourceVoice )
+			_sourceVoice->DestroyVoice ();
+		_sourceVoice = nullptr;
+		_masteringVoice->DestroyVoice ();
+		_masteringVoice = nullptr;
 
-public:
-	virtual AEERROR setSourceStream ( AEBaseAudioStream * stream )
-	{
-		HRESULT hr;
-
-		if ( stream == nullptr )
-			return E_INVALIDARG;
-
-		if ( sourceVoice )
-		{
-			sourceVoice->DestroyVoice ();
-			sourceVoice = nullptr;
-		}
-
-		this->stream.release ();
-		this->stream = stream;
-
-		AEAutoPtr<AEBaseAudioDecoder> decoder;
-		if ( FAILED ( hr = stream->getBaseDecoder ( &decoder ) ) )
-			return hr;
-
-		AEWaveFormat waveFormat;
-		if ( FAILED ( hr = decoder->getWaveFormat ( &waveFormat ) ) )
-			return hr;
-		WAVEFORMATEX * pwfx = waveFormat.getWaveFormatEx ();
-		hr = xaudio2->CreateSourceVoice ( &sourceVoice, pwfx, 0,
-			XAUDIO2_DEFAULT_FREQ_RATIO, this );
-		CoTaskMemFree ( pwfx );
-
-		byterate = waveFormat.getByteRate ();
-		readingSize = byterate / 100;
-
-		readPos = AETimeSpan ( 0 );
-
-		return hr;
+		_xaudio2->StopEngine ();
 	}
 
 public:
-	virtual AEERROR play ()
+
+	error_t play ()
 	{
-		HRESULT hr;
-		if ( sourceVoice == nullptr ) return AEERROR_FAIL;
-		if ( SUCCEEDED ( hr = sourceVoice->Start () ) )
-		{
-			playerState = kAEPLAYERSTATE_PLAYING;
-			OnBufferEnd ( nullptr );
-		}
-		return SUCCEEDED ( hr ) ? AEERROR_SUCCESS : AEERROR_FAIL;
+		if ( _state == AEPS_PLAYING ) return AEERROR_NOERROR;
+		if ( _sourceVoice == nullptr ) return AEERROR_INVALID_CALL;
+
+		OnBufferEnd ( ( void * ) 0x12345678 );
+		if ( FAILED ( _sourceVoice->Start () ) )
+			return AEERROR_FAIL;
+
+		_state = AEPS_PLAYING;
+
+		return AEERROR_NOERROR;
 	}
-	virtual AEERROR pause ()
+	error_t pause ()
 	{
-		HRESULT hr;
-		if ( sourceVoice == nullptr ) return AEERROR_FAIL;
-		if ( SUCCEEDED ( hr = sourceVoice->Stop () ) )
-		{
-			playerState = kAEPLAYERSTATE_PAUSED;
-		}
-		return SUCCEEDED ( hr ) ? AEERROR_SUCCESS : AEERROR_FAIL;
+		if ( _state == AEPS_PAUSED ) return AEERROR_NOERROR;
+		if ( _sourceVoice == nullptr ) return AEERROR_INVALID_CALL;
+
+		OnBufferEnd ( ( void * ) 0x12345678 );
+		if ( FAILED ( _sourceVoice->Stop () ) )
+			return AEERROR_FAIL;
+
+		_state = AEPS_PAUSED;
+
+		return AEERROR_NOERROR;
 	}
-	virtual AEERROR stop ()
+	error_t stop ()
 	{
-		HRESULT hr;
-		AEERROR et;
-		if ( sourceVoice == nullptr ) return AEERROR_FAIL;
-		if ( FAILED ( et = stream->seek ( kAESTREAMSEEK_SET, 0, nullptr ) ) )
-			return et;
-		if ( SUCCEEDED ( hr = sourceVoice->Stop () ) )
-		{
-			playerState = kAEPLAYERSTATE_STOPPED;
-			readedTime.QuadPart = 0;
-			readPos = 0;
-			setPosition ( AETimeSpan ( 0 ) );
-		}
-		return SUCCEEDED ( hr ) ? AEERROR_SUCCESS : AEERROR_FAIL;
+		if ( _state == AEPS_STOPPED ) return AEERROR_NOERROR;
+		if ( _sourceVoice == nullptr ) return AEERROR_INVALID_CALL;
+
+		if ( FAILED ( _sourceVoice->Stop () ) )
+			return AEERROR_FAIL;
+
+		_sourceStream->seek ( _sourceStream->object, 0, AESO_BEGIN );
+
+		_state = AEPS_STOPPED;
+
+		return AEERROR_NOERROR;
 	}
 
 public:
-	virtual AEERROR getPosition ( AETimeSpan * pos )
+	error_t state ( AEPLAYERSTATE * state )
 	{
-		if ( playerState == kAEPLAYERSTATE_STOPPED )
+		*state = _state;
+		return AEERROR_NOERROR;
+	}
+
+public:
+	error_t getDuration ( AETIMESPAN * timeSpan )
+	{
+		if ( _sourceStream == nullptr ) return AEERROR_INVALID_CALL;
+		int64_t temp = _sourceStream->length ( _sourceStream->object );
+		*timeSpan = AETIMESPAN_initializeWithByteCount ( temp, _wf.bytesPerSec );
+		return AEERROR_NOERROR;
+	}
+	error_t getPosition ( AETIMESPAN * timeSpan )
+	{
+		if ( _sourceStream == nullptr ) return AEERROR_INVALID_CALL;
+		if ( _state == AEPS_STOPPED )
 		{
-			*pos = 0;
-			return AEERROR_SUCCESS;
+			timeSpan->ticks = 0;
+			return AEERROR_NOERROR;
 		}
-		else if ( playerState == kAEPLAYERSTATE_PAUSED )
+		else if ( _state == AEPS_PAUSED )
 		{
-			AEERROR et;
-			int64_t streamPos;
-			if ( FAILED ( et = stream->getPosition ( &streamPos ) ) )
-				return et;
-			*pos = AETimeSpan::fromByteCount ( streamPos, byterate );
-			return AEERROR_SUCCESS;
+			int64_t temp = _sourceStream->tell ( _sourceStream->object );
+			*timeSpan = AETIMESPAN_initializeWithByteCount ( temp, _wf.bytesPerSec );
+			return AEERROR_NOERROR;
 		}
 
 		LARGE_INTEGER currentTime;
 		QueryPerformanceCounter ( &currentTime );
 
-		*pos = AETimeSpan ( readPos.getTicks () + ( ( currentTime.QuadPart - readedTime.QuadPart ) * 10000000 / performanceFrequency.QuadPart ) );
+		timeSpan->ticks = _sampleTime.ticks + ( ( currentTime.QuadPart - _readedTime.QuadPart ) * 10000000 / _performanceFrequency.QuadPart );
 
-		return AEERROR_SUCCESS;
+		return AEERROR_NOERROR;
 	}
-	virtual AEERROR setPosition ( AETimeSpan pos )
+	error_t setPosition ( AETIMESPAN timeSpan )
 	{
-		HRESULT hr;
-		AEERROR et;
-		if ( playerState == kAEPLAYERSTATE_PLAYING )
-			if ( FAILED ( hr = sourceVoice->Stop () ) )
-				return AEERROR_FAIL;
-		if ( FAILED ( et = stream->seek ( kAESTREAMSEEK_SET, pos.getByteCount ( byterate ), nullptr ) ) )
-			return et;
-		if ( playerState == kAEPLAYERSTATE_PLAYING )
-			return FAILED ( sourceVoice->Start () ) ? AEERROR_FAIL : AEERROR_SUCCESS;
-		return AEERROR_SUCCESS;
-	}
-	virtual AEERROR getDuration ( AETimeSpan * duration )
-	{
-		if ( stream == nullptr )
-			return AEERROR_FAIL;
-
-		AEAutoPtr<AEBaseAudioDecoder> decoder;
-		if ( FAILED ( stream->getBaseDecoder ( &decoder ) ) )
-			return AEERROR_FAIL;
-
-		return decoder->getDuration ( duration );
-	}
-	virtual AEERROR getState ( AEPLAYERSTATE * state )
-	{
-		*state = playerState;
-		return AEERROR_SUCCESS;
+		if ( _sourceStream == nullptr ) return AEERROR_INVALID_CALL;
+		_sourceStream->seek ( _sourceStream->object, ( int64_t ) ( AETIMESPAN_totalSeconds ( timeSpan ) * _wf.bytesPerSec ), AESO_BEGIN );
+		return AEERROR_NOERROR;
 	}
 
 public:
-	virtual AEERROR setVolume ( float volume )
+	error_t getVolume ( float * vol )
 	{
-		if ( sourceVoice == nullptr )
-			return AEERROR_FAIL;
-		return SUCCEEDED ( sourceVoice->SetVolume ( volume ) ) ? AEERROR_SUCCESS : AEERROR_FAIL;
+		_masteringVoice->GetVolume ( vol );
+		return AEERROR_NOERROR;
 	}
-	virtual AEERROR getVolume ( float * volume )
+	error_t setVolume ( float vol )
 	{
-		if ( sourceVoice == nullptr )
+		if ( FAILED ( _masteringVoice->SetVolume ( vol ) ) )
 			return AEERROR_FAIL;
-		sourceVoice->GetVolume ( volume );
-		return AEERROR_SUCCESS;
+		return AEERROR_NOERROR;
 	}
 
 public:
-	virtual void __stdcall OnVoiceProcessingPassStart ( UINT32 BytesRequired ) { }
-	virtual void __stdcall OnVoiceProcessingPassEnd () { }
-	virtual void __stdcall OnStreamEnd () { }
-	virtual void __stdcall OnBufferStart ( void* pBufferContext ) { }
-	virtual void __stdcall OnBufferEnd ( void* pBufferContext )
+	error_t setSource ( AEAUDIOSTREAM * audioStream )
 	{
-		if ( playerState != kAEPLAYERSTATE_PLAYING )
+		if ( audioStream == nullptr )
+			return AEERROR_ARGUMENT_IS_NULL;
+
+		stop ();
+
+		AE_releaseInterface ( ( void ** ) &_sourceStream );
+		
+		if ( _sourceVoice )
+		{
+			_sourceVoice->Stop ();
+			_sourceVoice->DestroyVoice ();
+			_sourceVoice = nullptr;
+		}
+
+		if ( ISERROR ( audioStream->getWaveFormat ( audioStream->object, &_wf ) ) )
+			return AEERROR_FAIL;
+
+		WAVEFORMATEX * pwfx = AEWAVEFORMAT_waveFormatExFromWaveFormat ( &_wf );
+		if ( FAILED ( _xaudio2->CreateSourceVoice ( &_sourceVoice, pwfx, 0, XAUDIO2_DEFAULT_FREQ_RATIO, this ) ) )
+		{
+			CoTaskMemFree ( pwfx );
+			return AEERROR_FAIL;
+		}
+
+		CoTaskMemFree ( pwfx );
+
+		_sourceStream = audioStream;
+		AE_retainInterface ( _sourceStream );
+
+		return AEERROR_NOERROR;
+	}
+
+public:
+	STDMETHOD_ ( void, OnVoiceProcessingPassStart ) ( THIS_ UINT32 BytesRequired ) { }
+	STDMETHOD_ ( void, OnVoiceProcessingPassEnd ) ( THIS ) { }
+	STDMETHOD_ ( void, OnStreamEnd ) ( THIS ) { }
+	STDMETHOD_ ( void, OnBufferStart ) ( THIS_ void* pBufferContext ) { }
+	STDMETHOD_ ( void, OnBufferEnd ) ( THIS_ void* pBufferContext )
+	{
+		if ( _state != AEPS_PLAYING && pBufferContext != ( void * ) 0x12345678 )
 			return;
 
 		HRESULT hr;
 
 		BYTE readBuffer [ 524288 ];
-		int64_t readed;
-		if ( FAILED ( hr = stream->read ( &readBuffer [ 0 ], readingSize, &readed ) ) )
+		int64_t readed = _sourceStream->read ( _sourceStream->object, &readBuffer [ 0 ], _wf.bytesPerSec / 100 );
+		if ( readed == 0 )
 		{
 			//if ( hr == E_EOF )
 			{
 				XAUDIO2_BUFFER xBuffer = {};
 				xBuffer.Flags = XAUDIO2_END_OF_STREAM;
-				sourceVoice->SubmitSourceBuffer ( &xBuffer );
+				_sourceVoice->SubmitSourceBuffer ( &xBuffer );
 
-				playerState = kAEPLAYERSTATE_STOPPED;
-				readedTime.QuadPart = 0;
-				readPos = 0;
+				_state = AEPS_STOPPED;
+				_readedTime.QuadPart = 0;
+				_sampleTime.ticks = 0;
 
 				return;
 			}
 		}
+		else if ( readed == -1 )
+			return;
 
-		//readPos += AETimeSpan::fromByteCount ( readed, byterate );
-		int64_t pos;
-		stream->getPosition ( &pos );
-		readPos = AETimeSpan::fromByteCount ( pos, byterate );
+		int64_t pos = _sourceStream->tell ( _sourceStream->object );
+		_sampleTime = AETIMESPAN_initializeWithSeconds ( pos / ( double ) _wf.bytesPerSec );
 
 		XAUDIO2_BUFFER xBuffer = {};
 		xBuffer.pAudioData = readBuffer;
 		xBuffer.AudioBytes = ( UINT32 ) readed;
-		if ( FAILED ( hr = sourceVoice->SubmitSourceBuffer ( &xBuffer ) ) )
+		if ( FAILED ( hr = _sourceVoice->SubmitSourceBuffer ( &xBuffer ) ) )
 		{
 			return;
 		}
 
-		QueryPerformanceCounter ( &readedTime );
+		QueryPerformanceCounter ( &_readedTime );
+
 	}
-	virtual void __stdcall OnLoopEnd ( void* pBufferContext ) { }
-	virtual void __stdcall OnVoiceError ( void* pBufferContext, HRESULT Error ) { }
+	STDMETHOD_ ( void, OnLoopEnd ) ( THIS_ void* pBufferContext ) { }
+	STDMETHOD_ ( void, OnVoiceError ) ( THIS_ void* pBufferContext, HRESULT Error ) { }
 
 private:
-	CComPtr<IXAudio2> xaudio2;
-	IXAudio2SourceVoice * sourceVoice;
-	AEAutoPtr<AEBaseAudioStream> stream;
-	int readingSize;
-	int byterate;
+	CComPtr<IXAudio2> _xaudio2;
+	IXAudio2MasteringVoice * _masteringVoice;
+	IXAudio2SourceVoice * _sourceVoice;
 
-	AEPLAYERSTATE playerState;
+	AEAutoInterface<AEAUDIOSTREAM> _sourceStream;
+	AEWAVEFORMAT _wf;
 
-	AETimeSpan readPos;
-	AETimeSpan playingPos;
-
-	LARGE_INTEGER performanceFrequency;
-	LARGE_INTEGER readedTime;
-	AETimeSpan firstSampleTime;
+	AEPLAYERSTATE _state;
+	LARGE_INTEGER _performanceFrequency;
+	LARGE_INTEGER _readedTime;
+	AETIMESPAN _sampleTime;
 };
 
-AEERROR AE_createXAudio2Player ( IXAudio2 * xaudio2, AEBaseAudioPlayer ** audioPlayer )
+EXTC AEEXP error_t AE_createXAudio2AudioPlayer ( int32_t processor, AEAUDIOPLAYER ** ret )
 {
-	if ( xaudio2 == nullptr || audioPlayer == nullptr )
-		return AEERROR_INVALID_ARGUMENT;
+	AEAUDIOPLAYER * player = AE_allocInterfaceType ( AEAUDIOPLAYER );
+	player->object = new __XAudio2AudioPlayer ( ( XAUDIO2_PROCESSOR ) processor );
+	player->free = [] ( void * obj ) { delete reinterpret_cast< __XAudio2AudioPlayer* >( obj ); };
+	player->tag = "AudEar XAudio 2 Audio Player";
+	player->play = [] ( void * obj ) { return reinterpret_cast< __XAudio2AudioPlayer* >( obj )->play (); };
+	player->pause = [] ( void * obj ) { return reinterpret_cast< __XAudio2AudioPlayer* >( obj )->pause (); };
+	player->stop = [] ( void * obj ) { return reinterpret_cast< __XAudio2AudioPlayer* >( obj )->stop (); };
+	player->getDuration = [] ( void * obj, AETIMESPAN * timeSpan ) { return reinterpret_cast< __XAudio2AudioPlayer* >( obj )->getDuration ( timeSpan ); };
+	player->getPosition = [] ( void * obj, AETIMESPAN * timeSpan ) { return reinterpret_cast< __XAudio2AudioPlayer* >( obj )->getPosition ( timeSpan ); };
+	player->setPosition = [] ( void * obj, AETIMESPAN timeSpan ) { return reinterpret_cast< __XAudio2AudioPlayer* >( obj )->setPosition ( timeSpan ); };
+	player->state = [] ( void * obj, AEPLAYERSTATE * ps ) { return reinterpret_cast< __XAudio2AudioPlayer* >( obj )->state ( ps ); };
+	player->setSource = [] ( void * obj, AEAUDIOSTREAM * stream ) { return reinterpret_cast< __XAudio2AudioPlayer* >( obj )->setSource ( stream ); };
+	player->getVolume = [] ( void * obj, float * vol ) { return reinterpret_cast< __XAudio2AudioPlayer* >( obj )->getVolume ( vol ); };
+	player->setVolume = [] ( void * obj, float vol ) { return reinterpret_cast< __XAudio2AudioPlayer* >( obj )->setVolume ( vol ); };
 
-	*audioPlayer = new AEXAudioAudioPlayer ( xaudio2 );
+	*ret = player;
 
-	return AEERROR_SUCCESS;
+	return AEERROR_NOERROR;
 }
 
 #endif

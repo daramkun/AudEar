@@ -1,99 +1,129 @@
+#include <crtdbg.h>
+
 #include <audear.h>
+#include <audear.filter.h>
 #include <audear.osscodec.h>
 #pragma comment ( lib, "libaudear.lib" )
+#pragma comment ( lib, "libaudear.filter.lib" )
 #pragma comment ( lib, "libaudear.osscodec.lib" )
-#pragma comment ( lib, "XAudio2.lib" )
-#pragma comment ( lib, "mf.lib" )
-#pragma comment ( lib, "mfplat.lib" )
+
+#include <cstdio>
+
+#define BANDWIDTH			0.8
 
 int main ( void )
 {
-//#define FILENAME TEXT ( "F:\\Multimedia\\Music\\KPOP&ROCK\\厩悼孤瘤记\\厩悼孤瘤记-04-给积变 么.mp3" )
-//#define FILENAME TEXT ( "F:\\Multimedia\\Music\\Game\\DJMAX RESPECT\\DISK 1\\18. BlackCat.mp3" )
-#define FILENAME TEXT ( "Test.mp3" )
-//#define FILENAME TEXT ( "Test.ogg" )
-//#define FILENAME TEXT ( "Test.opus" )
-//#define FILENAME TEXT ( "Test.flac" )
-//#define FILENAME TEXT ( "Test5_1ch.flac" )
-//#define FILENAME TEXT ( "TestOggFlac.flac" )
-//#define FILENAME TEXT ( "Test.m4a" )
+	_CrtSetDbgFlag ( _CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF );
 
-	COM com;
-	MediaFoundation mf;
+	AE_init ();
+	AE_OSS_init ();
 
-	AEERROR et;
-	
-	/**/XAudio2 xaudio2;
-	AEAutoPtr<AEBaseAudioPlayer> audioPlayer;
-	if ( FAILED ( et = AE_createXAudio2Player ( xaudio2, &audioPlayer ) ) )
-	return -1;/**/
+	AE_unregisterAudioDecoderCreator ( AE_createMediaFoundationAudioDecoder );
 
-	/*MMAPI mmapi;
-	AEAutoPtr<AEBaseAudioPlayer> audioPlayer;
-	if ( FAILED ( et = AE_createWASAPIPlayer ( mmapi, AUDCLNT_SHAREMODE_SHARED, &audioPlayer ) ) )
-		return -1;/**/
+//#define FILENAME "./Samples/MP3 Sample with ID3 tag.mp3"
+//#define FILENAME "./Samples/FLAC Sample.flac"
+#define FILENAME "./Samples/WAV Sample.wav"
+	AEAutoInterface<AESTREAM> fileStream;
+	if ( ISERROR ( AE_createFileStream ( FILENAME, &fileStream ) ) )
+		return -1;
 
-	AEAutoPtr<AEBaseStream> fileStream;
-	if ( FAILED ( et = AE_createFileStream ( FILENAME, true, &fileStream ) ) )
+	AEAutoInterface<AEAUDIODECODER> decoder;
+	if ( ISERROR ( AE_detectAudioDecoder ( fileStream, &decoder ) ) )
 		return -2;
+	printf ( "CODEC: %s\n", decoder->tag );
 
-	AEAutoPtr<AEBaseAudioDecoder> decoder;
-	//if ( FAILED ( et = AE_createMediaFoundationDecoder ( &decoder ) ) )
-	//if ( FAILED ( et = AE_createOggVorbisDecoder ( &decoder ) ) )
-	//if ( FAILED ( et = AE_createOggOpusDecoder ( &decoder ) ) )
-	//if ( FAILED ( et = AE_createFLACDecoder ( &decoder ) ) )
-	//if ( FAILED ( et = AE_createOggFLACDecoder ( &decoder ) ) )
-	if ( FAILED ( et = AE_createLameMp3Decoder ( &decoder ) ) )
-	//if ( FAILED ( et = AE_createM4AAACDecoder ( &decoder ) ) )
+	AEWAVEFORMAT wf;
+	decoder->getWaveFormat ( decoder->object, &wf );
+
+	AEAutoInterface<AEAUDIOSTREAM> audioStream;
+	if ( ISERROR ( AE_createBufferedAudioStream ( decoder, &audioStream ) ) )
 		return -3;
-	if ( FAILED ( et = decoder->initialize ( fileStream ) ) )
+
+	AEFILTERCOLLECTION filters = AE_initializeEqualizerFilterCollection ( wf.samplesPerSec,
+		BANDWIDTH, AEEQP_NONE );
+	
+	AEAutoInterface<AEAUDIOSTREAM> toIEEE, toPCM, filterStream;
+	if ( ISERROR ( AE_createPCMToIEEEFloatAudioStream ( audioStream, &toIEEE ) ) )
 		return -4;
-
-	AEAutoPtr<AEBaseAudioStream> audioStream;
-	if ( FAILED ( et = AE_createAudioStream ( decoder, AETimeSpan ( 0, 0, 1, 000 ), &audioStream ) ) )
+	if ( ISERROR ( AE_createFilterAudioStream ( toIEEE, &filters, false, &filterStream ) ) )
 		return -5;
-
-	AEEqualizerBand bands [] =
-	{
-		{    32,     0, 1.f },
-		{    64, -3.4f, 1.f },
-		{   125,  1.9f, 1.f },
-		{   250,  3.0f, 1.f },
-		{   500,  6.0f, 1.f },
-		{  1000,  3.0f, 1.f },
-		{  2000,  1.7f, 1.f },
-		{  4000, -2.2f, 1.f },
-		{  8000, -4.6f, 1.f },
-		{ 16000, -4.8f, 1.f },
-	};
-
-	AEAutoPtr<AEBaseAudioStream> equalizerStream;
-	if ( FAILED ( et = AE_createEqualizationAudioStream ( audioStream, bands, sizeof ( bands ) / sizeof ( AEEqualizerBand ), &equalizerStream ) ) )
+	if ( ISERROR ( AE_createIEEEFloatToPCMAudioStream ( filterStream, 16, &toPCM ) ) )
 		return -6;
 
-	if ( FAILED ( et = audioPlayer->setSourceStream ( equalizerStream ) ) )
+	AEAutoInterface<AEAUDIOPLAYER> player;
+	//if ( ISERROR ( AE_createWASAPIAudioPlayer ( nullptr, AEWASAPISM_SHARED, &player ) ) )
+	if ( ISERROR ( AE_createXAudio2AudioPlayer ( 1, &player ) ) )
 		return -7;
 
-	if ( FAILED ( et = audioPlayer->play () ) )
+	if ( ISERROR ( player->setSource ( player->object, /*audioStream*/toPCM ) ) )
 		return -8;
 
+	if ( ISERROR ( player->play ( player->object ) ) )
+		return -9;
+
+	int selected = 0;
+	double equalizerValue [ 10 ] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 	while ( true )
 	{
-		AEPLAYERSTATE state;
-		if ( FAILED ( et = audioPlayer->getState ( &state ) ) )
-			return -9;
+		AEPLAYERSTATE playerState;
+		player->state ( player->object, &playerState );
 
-		if ( state != kAEPLAYERSTATE_PLAYING )
+		if ( playerState != AEPS_PLAYING )
 			break;
 
-		AETimeSpan pos, duration;
-		audioPlayer->getPosition ( &pos );
-		audioPlayer->getDuration ( &duration );
+		AETIMESPAN pos, dur;
+		player->getPosition ( player->object, &pos );
+		player->getDuration ( player->object, &dur );
 
-		printf ( "%s/%s\n", ( ( std::string ) pos ).c_str (), ( ( std::string ) duration ).c_str () );
+		printf ( "\r%02d:%02d:%02d.%03d/%02d:%02d:%02d.%03d",
+			AETIMESPAN_getHours ( pos ), AETIMESPAN_getMinutes ( pos ), AETIMESPAN_getSeconds ( pos ), AETIMESPAN_getMillisecs ( pos ),
+			AETIMESPAN_getHours ( dur ), AETIMESPAN_getMinutes ( dur ), AETIMESPAN_getSeconds ( dur ), AETIMESPAN_getMillisecs ( dur ) );
+		
+		printf ( "\t" );
 
-		Sleep ( 100 );
+		for ( int i = 0; i < 10; ++i )
+		{
+			HANDLE hConsole = GetStdHandle ( STD_OUTPUT_HANDLE );
+			if ( selected == i )
+				SetConsoleTextAttribute ( hConsole, BACKGROUND_BLUE | FOREGROUND_INTENSITY );
+			//if ( selected == i )
+			//	SetConsoleColors ( BACKGROUND_BLUE | FOREGROUND_INTENSITY );
+			//else SetConsoleColors ( BACKGROUND_INTENSITY | FOREGROUND_INTENSITY );
+			printf ( "%2.2lf", equalizerValue [ i ] );
+			SetConsoleTextAttribute ( hConsole, FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE );
+			printf ( " " );
+		}
+
+		if ( GetAsyncKeyState ( VK_ESCAPE ) & 0x1 )
+			break;
+
+		if ( GetAsyncKeyState ( VK_UP ) & 0x1 )
+		{
+			equalizerValue [ selected ] += 0.1f;
+			if ( equalizerValue [ selected ] > 30 ) equalizerValue [ selected ] = 30;
+			filters = AE_initializeEqualizerFilterCollectionWithGainDB ( wf.samplesPerSec, BANDWIDTH, equalizerValue );
+		}
+		if ( GetAsyncKeyState ( VK_DOWN ) & 0x1 )
+		{
+			equalizerValue [ selected ] -= 0.1f;
+			if ( equalizerValue [ selected ] < -30 ) equalizerValue [ selected ] = -30;
+			filters = AE_initializeEqualizerFilterCollectionWithGainDB ( wf.samplesPerSec, BANDWIDTH, equalizerValue );
+		}
+		if ( GetAsyncKeyState ( VK_LEFT ) & 0x1 )
+		{
+			--selected;
+			if ( selected <= 0 ) selected = 0;
+		}
+		if ( GetAsyncKeyState ( VK_RIGHT ) & 0x1 )
+		{
+			++selected;
+			if ( selected > 10 ) selected = 9;
+		}
+
+		Sleep ( 1 );
 	}
+
+	player->stop ( player->object );
 
 	return 0;
 }
