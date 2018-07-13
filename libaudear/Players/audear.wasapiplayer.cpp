@@ -164,12 +164,14 @@ public:
 public:
 	error_t getDuration ( AETIMESPAN * timeSpan )
 	{
+		if ( _sourceStream == nullptr ) return AEERROR_INVALID_CALL;
 		int64_t temp = _sourceStream->length ( _sourceStream->object );
 		*timeSpan = AETIMESPAN_initializeWithByteCount ( temp, _pwfx->nAvgBytesPerSec );
 		return AEERROR_NOERROR;
 	}
 	error_t getPosition ( AETIMESPAN * timeSpan )
 	{
+		if ( _sourceStream == nullptr ) return AEERROR_INVALID_CALL;
 		if ( _state == AEPS_STOPPED )
 		{
 			timeSpan->ticks = 0;
@@ -191,6 +193,7 @@ public:
 	}
 	error_t setPosition ( AETIMESPAN timeSpan )
 	{
+		if ( _sourceStream == nullptr ) return AEERROR_INVALID_CALL;
 		_sourceStream->seek ( _sourceStream->object, ( int64_t ) ( AETIMESPAN_totalSeconds ( timeSpan ) * _pwfx->nAvgBytesPerSec ), AESO_BEGIN );
 		return AEERROR_NOERROR;
 	}

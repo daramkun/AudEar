@@ -22,6 +22,7 @@
     <ClCompile Include="Streams\audear.convstreams.cpp" />
     <ClCompile Include="Decoders\audear.decoderdetector.cpp" />
     <ClCompile Include="Base\audear.cpp" />
+    <ClCompile Include="Players\audear.xaudio2player.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="Resources\libaudear.rc" />

@@ -1,6 +1,6 @@
 #include "../audear.h"
 
-#if ( AE_PLATFORM_WINDOWS && defined ( USE_OPENAL ) ) || !AE_PLATFORM_WINDOWS && !AE_PLATFORM_UWP 
+#if ( defined ( USE_OPENAL ) && USE_OPENAL )
 
 #	if AE_PLATFORM_WINDOWS
 #		include <al.h>

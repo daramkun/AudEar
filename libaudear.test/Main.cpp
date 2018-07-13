@@ -36,7 +36,7 @@ int main ( void )
 	decoder->getWaveFormat ( decoder->object, &wf );
 
 	AEAutoInterface<AEAUDIOSTREAM> audioStream;
-	if ( ISERROR ( AE_createWholeAudioStream ( decoder, &audioStream ) ) )
+	if ( ISERROR ( AE_createBufferedAudioStream ( decoder, &audioStream ) ) )
 		return -3;
 
 	AEFILTERCOLLECTION filters = AE_initializeEqualizerFilterCollection ( wf.samplesPerSec,
@@ -51,7 +51,8 @@ int main ( void )
 		return -6;
 
 	AEAutoInterface<AEAUDIOPLAYER> player;
-	if ( ISERROR ( AE_createWASAPIAudioPlayer ( nullptr, AEWASAPISM_SHARED, &player ) ) )
+	//if ( ISERROR ( AE_createWASAPIAudioPlayer ( nullptr, AEWASAPISM_SHARED, &player ) ) )
+	if ( ISERROR ( AE_createXAudio2AudioPlayer ( 1, &player ) ) )
 		return -7;
 
 	if ( ISERROR ( player->setSource ( player->object, /*audioStream*/toPCM ) ) )
