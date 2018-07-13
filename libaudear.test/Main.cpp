@@ -18,20 +18,16 @@ int main ( void )
 	AE_init ();
 	AE_OSS_init ();
 
-	//AE_unregisterAudioDecoderCreator ( AE_createMediaFoundationAudioDecoder );
+	AE_unregisterAudioDecoderCreator ( AE_createMediaFoundationAudioDecoder );
 
-#define FILENAME "./Samples/MP3 Sample with ID3 tag.mp3"
+//#define FILENAME "./Samples/MP3 Sample with ID3 tag.mp3"
 //#define FILENAME "./Samples/FLAC Sample.flac"
+#define FILENAME "./Samples/WAV Sample.wav"
 	AEAutoInterface<AESTREAM> fileStream;
 	if ( ISERROR ( AE_createFileStream ( FILENAME, &fileStream ) ) )
 		return -1;
 
 	AEAutoInterface<AEAUDIODECODER> decoder;
-	/*if ( ISERROR ( AE_createMediaFoundationAudioDecoder ( &decoder ) ) )
-		return -2;
-	
-	if ( ISERROR ( decoder->initialize ( decoder->object, fileStream ) ) )
-		return -3;*/
 	if ( ISERROR ( AE_detectAudioDecoder ( fileStream, &decoder ) ) )
 		return -2;
 	printf ( "CODEC: %s\n", decoder->tag );
@@ -40,33 +36,29 @@ int main ( void )
 	decoder->getWaveFormat ( decoder->object, &wf );
 
 	AEAutoInterface<AEAUDIOSTREAM> audioStream;
-	if ( ISERROR ( AE_createBufferedAudioStream ( decoder, &audioStream ) ) )
-		return -4;
+	if ( ISERROR ( AE_createWholeAudioStream ( decoder, &audioStream ) ) )
+		return -3;
 
 	AEFILTERCOLLECTION filters = AE_initializeEqualizerFilterCollection ( wf.samplesPerSec,
 		BANDWIDTH, AEEQP_NONE );
-	//AEFILTERCOLLECTION filters = AE_initializeSingleItemFilterCollection ( AE_initializeLowPassFilter ( wf.samplesPerSec, 1200, 0.5 ) );
 	
 	AEAutoInterface<AEAUDIOSTREAM> toIEEE, toPCM, filterStream;
 	if ( ISERROR ( AE_createPCMToIEEEFloatAudioStream ( audioStream, &toIEEE ) ) )
-		return -6;
+		return -4;
 	if ( ISERROR ( AE_createFilterAudioStream ( toIEEE, &filters, false, &filterStream ) ) )
-		return -7;
+		return -5;
 	if ( ISERROR ( AE_createIEEEFloatToPCMAudioStream ( filterStream, 16, &toPCM ) ) )
-		return -8;
+		return -6;
 
 	AEAutoInterface<AEAUDIOPLAYER> player;
 	if ( ISERROR ( AE_createWASAPIAudioPlayer ( nullptr, AEWASAPISM_SHARED, &player ) ) )
-		return -9;
+		return -7;
 
 	if ( ISERROR ( player->setSource ( player->object, /*audioStream*/toPCM ) ) )
-		return -10;
-
-	//if ( ISERROR ( player->setPosition ( player->object, AETIMESPAN_initializeWithTimes ( 0, 3, 10, 0 ) ) ) )
-	//	return -11;
+		return -8;
 
 	if ( ISERROR ( player->play ( player->object ) ) )
-		return -12;
+		return -9;
 
 	int selected = 0;
 	double equalizerValue [ 10 ] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };

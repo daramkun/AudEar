@@ -21,6 +21,4 @@ extern "C"
 #include "Decoders/audear.decoders.h"
 #include "Players/audear.players.h"
 
-#include "Simpler/audear.simpler.h"
-
 #endif

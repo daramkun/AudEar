@@ -2,6 +2,8 @@
 
 #include "../InnerUtilities/MemoryStream.hpp"
 
+#include <memory>
+
 class __BufferedAudioStream
 {
 public:
@@ -131,6 +133,112 @@ error_t AE_createBufferedAudioStream ( AEAUDIODECODER * decoder, AEAUDIOSTREAM *
 	audioStream->seek = [] ( void * obj, int64_t offset, AESEEKORIGIN origin ) { return reinterpret_cast< __BufferedAudioStream* >( obj )->seek ( offset, origin ); };
 	audioStream->tell = [] ( void * obj ) { return reinterpret_cast< __BufferedAudioStream* >( obj )->tell (); };
 	audioStream->length = [] ( void * obj ) { return reinterpret_cast< __BufferedAudioStream* >( obj )->length (); };
+
+	*ret = audioStream;
+
+	return AEERROR_NOERROR;
+}
+
+class __WholeAudioStream
+{
+public:
+	__WholeAudioStream ( AEAUDIODECODER * decoder ) noexcept
+		: _position ( 0 )
+	{
+		decoder->getWaveFormat ( decoder->object, &_format );
+
+		AETIMESPAN duration;
+		decoder->getDuration ( decoder->object, &duration );
+
+		_length = ( int64_t ) ( AETIMESPAN_totalSeconds ( duration ) * _format.bytesPerSec );
+
+		_buffer = std::shared_ptr<int8_t []> ( new int8_t [ _length ] );
+		int64_t offset = 0;
+
+		AEAUDIOSAMPLE * sample;
+		while ( !ISERROR ( decoder->readSample ( decoder->object, &sample ) ) )
+		{
+			uint8_t * sampleBuffer;
+			int64_t sampleLength;
+			if ( !ISERROR ( sample->lock ( sample->object, &sampleBuffer, &sampleLength ) ) )
+			{
+				if ( offset + sampleLength < _length )
+				{
+					memcpy ( &_buffer [ offset ], sampleBuffer, sampleLength );
+					offset += sampleLength;
+				}
+				else
+					printf ( "[WARNING] Buffer overflow\n" );
+				sample->unlock ( sample->object );
+			}
+			AE_releaseInterface ( ( void ** ) &sample );
+		}
+	}
+	~__WholeAudioStream () noexcept
+	{ }
+
+public:
+	error_t getWaveFormat ( AEWAVEFORMAT * format ) noexcept
+	{
+		*format = _format;
+		return AEERROR_NOERROR;
+	}
+	error_t buffering () noexcept { return AEERROR_END_OF_FILE; }
+
+public:
+	int64_t read ( uint8_t * buffer, int64_t len ) noexcept
+	{
+		auto retValue = ( _length < _position + len ) ? _length - _position : len;
+		memcpy ( buffer, &_buffer [ 0 ] + _position, retValue );
+		_position += retValue;
+		return retValue;
+	}
+	int64_t seek ( int64_t offset, AESEEKORIGIN origin ) noexcept
+	{
+		switch ( origin )
+		{
+			case AESO_BEGIN:
+				if ( offset > _length || offset < 0 )
+					return -1;
+				_position = offset;
+				break;
+
+			case AESO_CURRENT:
+				if ( _position + offset > _length || _position + offset < 0 )
+					return -1;
+				_position += offset;
+				break;
+
+			case AESO_END:
+				if ( _length + offset > _length || _length + offset < 0 )
+					return -1;
+				_position = _length - offset;
+				break;
+		}
+		return 0;
+	}
+	int64_t tell () noexcept { return _position; }
+	int64_t length () noexcept { return _length; }
+
+private:
+	std::shared_ptr<int8_t []> _buffer;
+	AEWAVEFORMAT _format;
+	int64_t _position;
+	int64_t _length;
+};
+
+EXTC AEEXP error_t AE_createWholeAudioStream ( AEAUDIODECODER * decoder, AEAUDIOSTREAM ** ret )
+{
+	AEAUDIOSTREAM * audioStream = AE_allocInterfaceType ( AEAUDIOSTREAM );
+	audioStream->object = new __WholeAudioStream ( decoder );
+	audioStream->free = [] ( void * obj ) { delete reinterpret_cast< __WholeAudioStream* >( obj ); };
+	audioStream->tag = "AudEar Whole Audio Stream";
+	audioStream->getWaveFormat = [] ( void * obj, AEWAVEFORMAT * format ) { return reinterpret_cast< __WholeAudioStream* >( obj )->getWaveFormat ( format ); };
+	audioStream->buffering = [] ( void * obj ) { return reinterpret_cast< __WholeAudioStream* >( obj )->buffering (); };
+	audioStream->read = [] ( void * obj, uint8_t * buffer, int64_t len ) { return reinterpret_cast< __WholeAudioStream* >( obj )->read ( buffer, len ); };
+	audioStream->seek = [] ( void * obj, int64_t offset, AESEEKORIGIN origin ) { return reinterpret_cast< __WholeAudioStream* >( obj )->seek ( offset, origin ); };
+	audioStream->tell = [] ( void * obj ) { return reinterpret_cast< __WholeAudioStream* >( obj )->tell (); };
+	audioStream->length = [] ( void * obj ) { return reinterpret_cast< __WholeAudioStream* >( obj )->length (); };
 
 	*ret = audioStream;
 

@@ -21,6 +21,11 @@ typedef struct AEEXP
 	int64_t ( *length ) ( void * obj );
 } AESTREAM;
 
+EXTC AEEXP int64_t AESTREAM_read ( AESTREAM * stream, uint8_t * buffer, int64_t len );
+EXTC AEEXP int64_t AESTREAM_seek ( AESTREAM * stream, int64_t offset, AESEEKORIGIN origin );
+EXTC AEEXP int64_t AESTREAM_tell ( AESTREAM * stream );
+EXTC AEEXP int64_t AESTREAM_length ( AESTREAM * stream );
+
 typedef struct AEEXP
 {
 	int32_t refCount;
@@ -33,6 +38,11 @@ typedef struct AEEXP
 	error_t ( *lock ) ( void * obj, uint8_t ** buffer, int64_t * length );
 	error_t ( *unlock ) ( void * obj );
 } AEAUDIOSAMPLE;
+
+EXTC AEEXP error_t AEAUDIOSAMPLE_getSampleTime ( AEAUDIOSAMPLE * sample, AETIMESPAN * timeSpan );
+EXTC AEEXP error_t AEAUDIOSAMPLE_getSampleDuration ( AEAUDIOSAMPLE * sample, AETIMESPAN * timeSpan );
+EXTC AEEXP error_t AEAUDIOSAMPLE_lock ( AEAUDIOSAMPLE * sample, uint8_t ** buffer, int64_t * length );
+EXTC AEEXP error_t AEAUDIOSAMPLE_unlock ( AEAUDIOSAMPLE * sample );
 
 typedef struct AEEXP
 {
@@ -49,6 +59,13 @@ typedef struct AEEXP
 	error_t ( *readSample ) ( void * obj, AEAUDIOSAMPLE ** sample );
 } AEAUDIODECODER;
 
+EXTC AEEXP error_t AEAUDIODECODER_initialize ( AEAUDIODECODER * decoder, AESTREAM * stream );
+EXTC AEEXP error_t AEAUDIODECODER_getWaveFormat ( AEAUDIODECODER * decoder, AEWAVEFORMAT * format );
+EXTC AEEXP error_t AEAUDIODECODER_getDuration ( AEAUDIODECODER * decoder, AETIMESPAN * timeSpan );
+EXTC AEEXP error_t AEAUDIODECODER_getReadPosition ( AEAUDIODECODER * decoder, AETIMESPAN * timeSpan );
+EXTC AEEXP error_t AEAUDIODECODER_setReadPosition ( AEAUDIODECODER * decoder, AETIMESPAN timeSpan );
+EXTC AEEXP error_t AEAUDIODECODER_readSample ( AEAUDIODECODER * decoder, AEAUDIOSAMPLE ** sample );
+
 typedef struct AEEXP
 {
 	int32_t refCount;
@@ -64,6 +81,13 @@ typedef struct AEEXP
 	int64_t ( *tell ) ( void * obj );
 	int64_t ( *length ) ( void * obj );
 } AEAUDIOSTREAM;
+
+EXTC AEEXP error_t AEAUDIOSTREAM_getWaveFormat ( AEAUDIOSTREAM * stream, AEWAVEFORMAT * format );
+EXTC AEEXP error_t AEAUDIOSTREAM_buffering ( AEAUDIOSTREAM * stream );
+EXTC AEEXP int64_t AEAUDIOSTREAM_read ( AEAUDIOSTREAM * stream, uint8_t * buffer, int64_t len );
+EXTC AEEXP int64_t AEAUDIOSTREAM_seek ( AEAUDIOSTREAM * stream, int64_t offset, AESEEKORIGIN origin );
+EXTC AEEXP int64_t AEAUDIOSTREAM_tell ( AEAUDIOSTREAM * stream );
+EXTC AEEXP int64_t AEAUDIOSTREAM_length ( AEAUDIOSTREAM * stream );
 
 typedef enum AEEXP
 {
@@ -95,6 +119,17 @@ typedef struct AEEXP
 	error_t ( *setSource ) ( void * obj, AEAUDIOSTREAM * audioStream );
 } AEAUDIOPLAYER;
 
+EXTC AEEXP error_t AEAUDIOPLAYER_play ( AEAUDIOPLAYER * player );
+EXTC AEEXP error_t AEAUDIOPLAYER_pause ( AEAUDIOPLAYER * player );
+EXTC AEEXP error_t AEAUDIOPLAYER_stop ( AEAUDIOPLAYER * player );
+EXTC AEEXP error_t AEAUDIOPLAYER_state ( AEAUDIOPLAYER * player, AEPLAYERSTATE * state );
+EXTC AEEXP error_t AEAUDIOPLAYER_getDuration ( AEAUDIOPLAYER * player, AETIMESPAN * timeSpan );
+EXTC AEEXP error_t AEAUDIOPLAYER_getPosition ( AEAUDIOPLAYER * player, AETIMESPAN * timeSpan );
+EXTC AEEXP error_t AEAUDIOPLAYER_setPosition ( AEAUDIOPLAYER * player, AETIMESPAN timeSpan );
+EXTC AEEXP error_t AEAUDIOPLAYER_getVolume ( AEAUDIOPLAYER * player, float * vol );
+EXTC AEEXP error_t AEAUDIOPLAYER_setVolume ( AEAUDIOPLAYER * player, float vol );
+EXTC AEEXP error_t AEAUDIOPLAYER_setSource ( AEAUDIOPLAYER * player, AEAUDIOSTREAM * audioStream );
+
 EXTC AEEXP void* AE_allocInterface ( size_t cb );
 #define AE_allocInterfaceType(x)							( x* ) AE_allocInterface ( sizeof ( x ) );
 EXTC AEEXP int32_t AE_retainInterface ( void * obj );
@@ -104,56 +139,21 @@ EXTC AEEXP int32_t AE_releaseInterface ( void ** obj );
 extern "C++"
 {
 	template<typename T>
-	class AEAutoInterface
-	{
+	class AEAutoInterface {
 	public:
-		AEAutoInterface ( T * ptr = nullptr )
-		{
-			i = ptr;
-			AE_retainInterface ( ptr );
-		}
-		~AEAutoInterface ()
-		{
-			if ( i )
-				AE_releaseInterface ( ( void ** ) &i );
-		}
+		AEAutoInterface ( T * ptr = nullptr ) noexcept : i ( ptr ) { AE_retainInterface ( ptr ); }
+		~AEAutoInterface () noexcept { if ( i ) AE_releaseInterface ( ( void ** ) &i ); }
 
-	public:
-		void release () noexcept
-		{
-			if ( i )
-				AE_releaseInterface ( ( void ** ) &i );
-			i = nullptr;
-		}
-		void attach ( T * p )
-		{
-			if ( i != p )
-			{
-				release ();
+		void release () noexcept { if ( i ) AE_releaseInterface ( ( void ** ) &i ); }
+		void attach ( T * p ) noexcept { if ( i != p ) { release (); i = p; AE_retainInterface ( p ); } }
+		T* detach () noexcept { auto temp = i; i = nullptr; return temp; }
+		T* get () noexcept { AE_retainInterface ( i ); return i; }
 
-				i = p;
-				AE_retainInterface ( p );
-			}
-		}
-		T* detach ()
-		{
-			auto temp = i;
-			i = nullptr;
-			return temp;
-		}
-
-		T* get ()
-		{
-			AE_retainInterface ( i );
-			return i;
-		}
-
-	public:
-		T * operator= ( T * p ) { attach ( p ); return ( T* ) i; }
-		T * operator= ( const AEAutoInterface<T> & p ) { attach ( p.i ); return ( T* ) i; }
-		operator T * ( ) const { return reinterpret_cast< T* > ( i ); }
-		T ** operator& () { return ( T** ) ( &i ); }
-		T * operator-> () const { return reinterpret_cast< T* > ( i ); }
+		T * operator= ( T * p ) noexcept { attach ( p ); return ( T* ) i; }
+		T * operator= ( const AEAutoInterface<T> & p ) noexcept { attach ( p.i ); return ( T* ) i; }
+		operator T * ( ) const noexcept { return reinterpret_cast< T* > ( i ); }
+		T ** operator& () noexcept { return ( T** ) ( &i ); }
+		T * operator-> () const noexcept { return reinterpret_cast< T* > ( i ); }
 
 	private:
 		T * i;

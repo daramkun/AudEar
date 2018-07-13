@@ -78,13 +78,13 @@ public:
 		if ( file == nullptr )
 			return AEERROR_NOT_SUPPORTED_FORMAT;
 
-		byterate = ( file->channels * ( file->bitsPerSample / 8 ) * file->sampleRate );
-
 		fixedBps = file->bitsPerSample;
 		if ( fixedBps > 16 )
 			fixedBps = 16;
 		else if ( fixedBps < 16 )
 			fixedBps = 32;
+
+		byterate = ( file->channels * ( fixedBps / 8 ) * file->sampleRate );
 
 		return AEERROR_NOERROR;
 	}
@@ -101,7 +101,7 @@ public:
 	{
 		if ( file == nullptr )
 			return AEERROR_INVALID_CALL;
-		*timeSpan = AETIMESPAN_initializeWithByteCount ( ( file->totalSampleCount * file->bytesPerSample ), byterate );
+		*timeSpan = AETIMESPAN_initializeWithByteCount ( ( ( file->totalSampleCount + 1 ) * ( fixedBps / 8 ) ), byterate );
 		return AEERROR_NOERROR;
 	}
 	error_t getReadPosition ( AETIMESPAN * timeSpan )
@@ -116,20 +116,20 @@ public:
 		if ( file == nullptr )
 			return AEERROR_INVALID_CALL;
 
-		drwav_seek_to_sample ( file, ( int64_t ) ( AETIMESPAN_totalSeconds ( timeSpan ) * byterate ) / file->bytesPerSample );
+		drwav_seek_to_sample ( file, ( int64_t ) ( AETIMESPAN_totalSeconds ( timeSpan ) * byterate ) / ( fixedBps / 8 ) );
 		return AEERROR_NOERROR;
 	}
 
 public:
 	error_t readSample ( AEAUDIOSAMPLE ** sample )
 	{
-		std::shared_ptr<int8_t []> buffer ( new int8_t [ file->bytesPerSample / ( file->bitsPerSample / 8 ) * ( fixedBps / 8 ) ] );
+		std::shared_ptr<int8_t []> buffer ( new int8_t [ byterate ] );
 		AETIMESPAN current = AETIMESPAN_initializeWithByteCount ( file->dataChunkDataSize - file->bytesRemaining, byterate );
 		long result;
 		if ( file->bitsPerSample == 32 )
-			result = drwav_read_s32 ( file, file->bytesPerSample, ( drwav_int32 * ) &buffer [ 0 ] );
+			result = drwav_read_s32 ( file, byterate / 4, ( drwav_int32 * ) &buffer [ 0 ] );
 		else if ( file->bitsPerSample == 16 )
-			result = drwav_read_s16 ( file, file->bytesPerSample, ( drwav_int16 * ) &buffer [ 0 ] );
+			result = drwav_read_s16 ( file, byterate / 2, ( drwav_int16 * ) &buffer [ 0 ] );
 
 		if ( result == 0 )
 			return AEERROR_END_OF_FILE;
@@ -137,7 +137,7 @@ public:
 			return AEERROR_FAIL;
 
 		AEAUDIOSAMPLE * ret = AE_allocInterfaceType ( AEAUDIOSAMPLE );
-		ret->object = new __DrWAVAudioSample ( &buffer [ 0 ], result, current, AETIMESPAN_initializeWithSeconds ( result / ( float ) byterate ) );
+		ret->object = new __DrWAVAudioSample ( &buffer [ 0 ], result * ( fixedBps / 8 ), current, AETIMESPAN_initializeWithSeconds ( result / ( float ) byterate ) );
 		ret->free = [] ( void * obj ) { delete reinterpret_cast< __DrWAVAudioSample* >( obj ); };
 		ret->tag = "AudEar Open Source Software CODEC Dr WAV's WAV Audio Decoder's Sample";
 		ret->getSampleTime = [] ( void * obj, AETIMESPAN * timeSpan ) { return reinterpret_cast< __DrWAVAudioSample* >( obj )->getSampleTime ( timeSpan ); };

@@ -225,7 +225,7 @@ public:
 	}
 	int64_t seek ( int64_t offset, AESEEKORIGIN origin ) noexcept
 	{
-		return _stream->seek ( _stream->object, offset / ( _wf.bitsPerSample / 8 ) * ( _bps / 8 ), origin );
+		return _stream->seek ( _stream->object, offset / ( _bps / 8 ) * ( _wf.bitsPerSample / 8 ), origin );
 	}
 	int64_t tell () noexcept
 	{
@@ -346,7 +346,7 @@ public:
 	}
 	int64_t seek ( int64_t offset, AESEEKORIGIN origin ) noexcept
 	{
-		return _stream->seek ( _stream->object, offset / ( _wf.bitsPerSample / 8 ) * ( _bps / 8 ), origin );
+		return _stream->seek ( _stream->object, offset / ( _bps / 8 ) * ( _wf.bitsPerSample / 8 ), origin );
 	}
 	int64_t tell () noexcept
 	{
@@ -400,4 +400,46 @@ error_t AE_createPCMToPCMAudioStream ( AEAUDIOSTREAM * stream, int bps, AEAUDIOS
 	*ret = audioStream;
 
 	return AEERROR_NOERROR;
+}
+
+EXTC AEEXP error_t AE_createConverterAudioStream ( AEAUDIOSTREAM * stream, AEAUDIOFORMAT af, int bps, AEAUDIOSTREAM ** ret )
+{
+	if ( stream == nullptr || ret == nullptr ) return AEERROR_ARGUMENT_IS_NULL;
+
+	if ( !( af == AEAF_PCM && ( bps == 8 || bps == 16 || bps == 24 || bps == 32 ) ) )
+		return AEERROR_INVALID_ARGUMENT;
+	else if ( !( af == AEAF_IEEE_FLOAT && bps == 32 ) )
+		return AEERROR_INVALID_ARGUMENT;
+
+	AEWAVEFORMAT originalFormat;
+	if ( ISERROR ( stream->getWaveFormat ( stream->object, &originalFormat ) ) )
+		return AEERROR_INVALID_ARGUMENT;
+
+	if ( originalFormat.audioFormat == AEAF_IEEE_FLOAT && af == AEAF_IEEE_FLOAT )
+	{
+		AE_retainInterface ( stream );
+		*ret = stream;
+		return AEERROR_NOERROR;
+	}
+	else if ( originalFormat.audioFormat == AEAF_IEEE_FLOAT && af == AEAF_PCM )
+	{
+		return AE_createIEEEFloatToPCMAudioStream ( stream, bps, ret );
+	}
+	else if ( originalFormat.audioFormat == AEAF_PCM && af == AEAF_IEEE_FLOAT )
+	{
+		return AE_createPCMToIEEEFloatAudioStream ( stream, ret );
+	}
+	else if ( originalFormat.audioFormat == AEAF_PCM && af == AEAF_PCM )
+	{
+		if ( originalFormat.bitsPerSample == bps )
+		{
+			AE_retainInterface ( stream );
+			*ret = stream;
+			return AEERROR_NOERROR;
+		}
+		else
+			return AE_createPCMToPCMAudioStream ( stream, bps, ret );
+	}
+
+	return AEERROR_INVALID_ARGUMENT;
 }
