@@ -382,4 +382,9 @@ error_t AE_createWASAPIAudioPlayer ( IUnknown * device, AEWASAPISHAREMODE shareM
 
 	return AEERROR_NOERROR;
 }
+
+error_t AE_createWASAPIAudioPlayerWithoutParameters ( AEAUDIOPLAYER ** ret )
+{
+	return AE_createWASAPIAudioPlayer ( nullptr, AEWASAPISM_SHARED, ret );
+}
 #endif

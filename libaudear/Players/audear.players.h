@@ -9,7 +9,10 @@ typedef enum AEEXP
 } AEWASAPISHAREMODE;
 
 EXTC AEEXP error_t AE_createWASAPIAudioPlayer ( IUnknown * device, AEWASAPISHAREMODE shareMode, AEAUDIOPLAYER ** ret );
+EXTC AEEXP error_t AE_createWASAPIAudioPlayerWithoutParameters ( AEAUDIOPLAYER ** ret );
+
 EXTC AEEXP error_t AE_createXAudio2AudioPlayer ( int32_t processor, AEAUDIOPLAYER ** ret );
+EXTC AEEXP error_t AE_createXAudio2AudioPlayerWithoutParameters ( AEAUDIOPLAYER ** ret );
 #endif
 
 #if ( defined ( USE_OPENAL ) && USE_OPENAL )

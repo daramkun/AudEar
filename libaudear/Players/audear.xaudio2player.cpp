@@ -229,7 +229,7 @@ private:
 	AETIMESPAN _sampleTime;
 };
 
-EXTC AEEXP error_t AE_createXAudio2AudioPlayer ( int32_t processor, AEAUDIOPLAYER ** ret )
+error_t AE_createXAudio2AudioPlayer ( int32_t processor, AEAUDIOPLAYER ** ret )
 {
 	AEAUDIOPLAYER * player = AE_allocInterfaceType ( AEAUDIOPLAYER );
 	player->object = new __XAudio2AudioPlayer ( ( XAUDIO2_PROCESSOR ) processor );
@@ -249,6 +249,11 @@ EXTC AEEXP error_t AE_createXAudio2AudioPlayer ( int32_t processor, AEAUDIOPLAYE
 	*ret = player;
 
 	return AEERROR_NOERROR;
+}
+
+error_t AE_createXAudio2AudioPlayerWithoutParameters ( AEAUDIOPLAYER ** ret )
+{
+	return AE_createXAudio2AudioPlayer ( XAUDIO2_DEFAULT_PROCESSOR, ret );
 }
 
 #endif
