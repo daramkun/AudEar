@@ -1,5 +1,6 @@
 #include <crtdbg.h>
 
+#define USE_OPENAL 1
 #include <audear.h>
 #include <audear.filter.h>
 #include <audear.osscodec.h>
@@ -20,9 +21,9 @@ int main ( void )
 
 	AE_unregisterAudioDecoderCreator ( AE_createMediaFoundationAudioDecoder );
 
-//#define FILENAME "./Samples/MP3 Sample with ID3 tag.mp3"
+#define FILENAME "./Samples/MP3 Sample with ID3 tag.mp3"
 //#define FILENAME "./Samples/FLAC Sample.flac"
-#define FILENAME "./Samples/WAV Sample.wav"
+//#define FILENAME "./Samples/WAV Sample.wav"
 	AEAutoInterface<AESTREAM> fileStream;
 	if ( ISERROR ( AE_createFileStream ( FILENAME, &fileStream ) ) )
 		return -1;
@@ -52,7 +53,8 @@ int main ( void )
 
 	AEAutoInterface<AEAUDIOPLAYER> player;
 	//if ( ISERROR ( AE_createWASAPIAudioPlayer ( nullptr, AEWASAPISM_SHARED, &player ) ) )
-	if ( ISERROR ( AE_createXAudio2AudioPlayer ( 1, &player ) ) )
+	//if ( ISERROR ( AE_createXAudio2AudioPlayer ( 1, &player ) ) )
+	if ( ISERROR ( AE_createOpenALAudioPlayer ( nullptr, &player ) ) )
 		return -7;
 
 	if ( ISERROR ( player->setSource ( player->object, /*audioStream*/toPCM ) ) )

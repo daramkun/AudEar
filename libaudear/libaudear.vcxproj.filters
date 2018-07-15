@@ -10,6 +10,8 @@
     <ClInclude Include="Players\audear.players.h" />
     <ClInclude Include="Resources\resource.h" />
     <ClInclude Include="InnerUtilities\MemoryStream.hpp" />
+    <ClInclude Include="InnerUtilities\Thread.hpp" />
+    <ClInclude Include="InnerUtilities\HighResolutionTimer.hpp" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Decoders\audear.mfdecoder.cpp" />

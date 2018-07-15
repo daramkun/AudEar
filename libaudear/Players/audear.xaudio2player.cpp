@@ -1,4 +1,5 @@
 #include "../audear.h"
+#include "../InnerUtilities/HighResolutionTimer.hpp"
 
 #if AE_PLATFORM_WINDOWS || AE_PLATFORM_UWP
 
@@ -11,9 +12,9 @@ class __XAudio2AudioPlayer : public IXAudio2VoiceCallback
 public:
 	__XAudio2AudioPlayer ( XAUDIO2_PROCESSOR processor )
 		:  _state ( AEPS_STOPPED ), _sourceStream ( nullptr ), _sourceVoice ( nullptr )
-		, _readedTime ( { 0 } ), _sampleTime ( { 0 } )
+		, _readedTime ( 0 ), _sampleTime ( { 0 } )
 	{
-		QueryPerformanceFrequency ( &_performanceFrequency );
+		_performanceFrequency = __HRT_GetFrequency ();
 
 		XAudio2Create ( &_xaudio2, 0, processor );
 		_xaudio2->CreateMasteringVoice ( &_masteringVoice );
@@ -107,7 +108,7 @@ public:
 		LARGE_INTEGER currentTime;
 		QueryPerformanceCounter ( &currentTime );
 
-		timeSpan->ticks = _sampleTime.ticks + ( ( currentTime.QuadPart - _readedTime.QuadPart ) * 10000000 / _performanceFrequency.QuadPart );
+		timeSpan->ticks = _sampleTime.ticks + ( ( currentTime.QuadPart - _readedTime ) * 10000000 / _performanceFrequency );
 
 		return AEERROR_NOERROR;
 	}
@@ -189,7 +190,7 @@ public:
 				_sourceVoice->SubmitSourceBuffer ( &xBuffer );
 
 				_state = AEPS_STOPPED;
-				_readedTime.QuadPart = 0;
+				_readedTime = 0;
 				_sampleTime.ticks = 0;
 
 				return;
@@ -209,7 +210,7 @@ public:
 			return;
 		}
 
-		QueryPerformanceCounter ( &_readedTime );
+		_readedTime = __HRT_GetCounter ();
 
 	}
 	STDMETHOD_ ( void, OnLoopEnd ) ( THIS_ void* pBufferContext ) { }
@@ -224,8 +225,8 @@ private:
 	AEWAVEFORMAT _wf;
 
 	AEPLAYERSTATE _state;
-	LARGE_INTEGER _performanceFrequency;
-	LARGE_INTEGER _readedTime;
+	int64_t _performanceFrequency;
+	int64_t _readedTime;
 	AETIMESPAN _sampleTime;
 };
 

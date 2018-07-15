@@ -16,7 +16,7 @@ EXTC AEEXP error_t AE_createXAudio2AudioPlayerWithoutParameters ( AEAUDIOPLAYER 
 #endif
 
 #if ( defined ( USE_OPENAL ) && USE_OPENAL )
-EXTC AEEXP error_t AE_createOpenALAudioPlayer ( AEAUDIOPLAYER ** ret );
+EXTC AEEXP error_t AE_createOpenALAudioPlayer ( const char * deviceName, AEAUDIOPLAYER ** ret );
 #endif
 
 #endif

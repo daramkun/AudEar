@@ -7,13 +7,13 @@
 class __MemoryStream
 {
 public:
-	__MemoryStream ()
+	inline __MemoryStream ()
 		: _maxLength ( 48000 * 2 * 2 ), _length ( 0 )
 	{
 		_buffer = new uint8_t [ _maxLength ];
 		_tempBuffer = new uint8_t [ _maxLength ];
 	}
-	~__MemoryStream ()
+	inline ~__MemoryStream ()
 	{
 		delete [] _tempBuffer;
 		delete [] _buffer;
@@ -22,7 +22,7 @@ public:
 	}
 
 public:
-	int64_t read ( uint8_t * buffer, int64_t length )
+	inline int64_t read ( uint8_t * buffer, int64_t length )
 	{
 		if ( length > _length )
 			length = _length;
@@ -36,7 +36,7 @@ public:
 		_length -= length;
 		return length;
 	}
-	void write ( const uint8_t * data, int64_t length )
+	inline void write ( const uint8_t * data, int64_t length )
 	{
 		int64_t tempLength = _length;
 		setLength ( _length + length );
@@ -44,9 +44,9 @@ public:
 	}
 
 public:
-	int64_t getLength () { return _length; }
+	inline int64_t getLength () { return _length; }
 
-	void setLength ( int64_t len )
+	inline void setLength ( int64_t len )
 	{
 		if ( _maxLength < len )
 		{

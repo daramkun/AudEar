@@ -1,4 +1,6 @@
 #include "../audear.h"
+#include "../InnerUtilities/Thread.hpp"
+#include "../InnerUtilities/HighResolutionTimer.hpp"
 
 #if AE_PLATFORM_WINDOWS || AE_PLATFORM_UWP
 
@@ -11,90 +13,15 @@
 #define REFTIMES_PER_SEC									10000000
 #define REFTIMES_PER_MILLISEC								10000
 
-class __Runnable
-{
-public:
-	virtual void Run ( void * obj, const bool & terminate ) PURE;
-};
-
-class __Thread
-{
-public:
-	__Thread ( __Runnable * runnable )
-		: hThread ( INVALID_HANDLE_VALUE ), runnable ( runnable )
-	{
-
-	}
-	~__Thread ()
-	{
-		Terminate ();
-	}
-
-public:
-	bool Run ( void * obj )
-	{
-		if ( IsThreadAlive () )
-			return false;
-
-		DWORD threadId;
-		this->obj = obj;
-		this->terminate = false;
-		hThread = CreateThread ( nullptr, 0, ThreadStart, this, 0, &threadId );
-
-		return ( hThread != INVALID_HANDLE_VALUE );
-	}
-
-	void Terminate ( bool safeTerminateOnly = false )
-	{
-		terminate = true;
-		if ( WaitForSingleObject ( hThread, 500 ) != WAIT_OBJECT_0 && !safeTerminateOnly )
-			TerminateThread ( hThread, 0 );
-		hThread = INVALID_HANDLE_VALUE;
-	}
-
-	void Join ()
-	{
-		if ( hThread == INVALID_HANDLE_VALUE ) return;
-		if ( !IsThreadAlive () ) return;
-		WaitForSingleObject ( hThread, INFINITE );
-		hThread = INVALID_HANDLE_VALUE;
-	}
-
-public:
-	bool IsThreadAlive ()
-	{
-		if ( hThread == INVALID_HANDLE_VALUE ) return false;
-		if ( WaitForSingleObject ( hThread, 0 ) != WAIT_OBJECT_0 )
-			return true;
-		hThread = INVALID_HANDLE_VALUE;
-		return false;
-	}
-
-private:
-	static DWORD ThreadStart ( void * ptr )
-	{
-		__Thread * thread = reinterpret_cast< __Thread* >( ptr );
-		thread->runnable->Run ( thread->obj, thread->terminate );
-		thread->hThread = INVALID_HANDLE_VALUE;
-		return 0;
-	}
-
-private:
-	HANDLE hThread;
-	__Runnable * runnable;
-	void * obj;
-	bool terminate;
-};
-
 class __WASAPIAudioPlayer : public __Runnable
 {
 public:
 	__WASAPIAudioPlayer ( IAudioClient * audioClient, WAVEFORMATEX * pwfx )
 		: _audioClient ( audioClient ), _pwfx ( pwfx ), _bufferThread ( this )
 		, _state ( AEPS_STOPPED ), _sourceStream ( nullptr )
-		, _readedTime ( { 0 } ), _sampleTime ( { 0 } )
+		, _readedTime ( 0 ), _sampleTime ( { 0 } )
 	{
-		QueryPerformanceFrequency ( &_performanceFrequency );
+		_performanceFrequency = __HRT_GetFrequency ();
 
 		_hEvent = CreateEvent ( nullptr, false, false, nullptr );
 		audioClient->SetEventHandle ( _hEvent );
@@ -187,7 +114,7 @@ public:
 		LARGE_INTEGER currentTime;
 		QueryPerformanceCounter ( &currentTime );
 
-		timeSpan->ticks = _sampleTime.ticks + ( ( currentTime.QuadPart - _readedTime.QuadPart ) * 10000000 / _performanceFrequency.QuadPart );
+		timeSpan->ticks = _sampleTime.ticks + ( ( currentTime.QuadPart - _readedTime ) * 10000000 / _performanceFrequency );
 
 		return AEERROR_NOERROR;
 	}
@@ -242,14 +169,14 @@ public:
 public:
 	virtual void Run ( void * obj, const bool & terminate )
 	{
-		QueryPerformanceCounter ( &_readedTime );
+		_readedTime = __HRT_GetCounter ();
 
 		while ( !terminate )
 		{
 			if ( WaitForSingleObject ( _hEvent, 1000 ) == WAIT_TIMEOUT )
 			{
 				_state = AEPS_STOPPED;
-				_readedTime.QuadPart = 0;
+				_readedTime = 0;
 				_sampleTime.ticks = 0;
 				return;
 			}
@@ -272,7 +199,7 @@ public:
 			if ( readed == 0 )
 			{
 				_state = AEPS_STOPPED;
-				_readedTime.QuadPart = 0;
+				_readedTime = 0;
 				_sampleTime.ticks = 0;
 				return;
 			}
@@ -293,7 +220,7 @@ public:
 
 			_audioRenderClient->ReleaseBuffer ( ( UINT ) readed / _pwfx->nBlockAlign, 0 );
 
-			QueryPerformanceCounter ( &_readedTime );
+			_readedTime = __HRT_GetCounter ();
 
 			Sleep ( 1 );
 		}
@@ -309,8 +236,8 @@ private:
 	UINT _audioClientBufferSize;
 
 	AEPLAYERSTATE _state;
-	LARGE_INTEGER _performanceFrequency;
-	LARGE_INTEGER _readedTime;
+	int64_t _performanceFrequency;
+	int64_t _readedTime;
 	AETIMESPAN _sampleTime;
 
 	AEAUDIOSTREAM * _sourceStream;
