@@ -12,13 +12,13 @@ libAudEar is Audio Decoding and Playing Interface Library.
 * Windows Audio Session API Audio Player
   * Shared Mode Player
   * Exclusive Mode Player
+* OpenAL Audio Player
 
 ### Plans
 * CoreAudio Audio Decoder
 * DirectSound 8 Audio Player
 * WaveOut Audio Player
 * ALSA Audio Player
-* OpenAL Audio Player
 * SIMD support Converter Streams for faster
 * Multi-channels audio to Mono audio Converter Stream
 * Resampler Audio Stream for Crossplatform
