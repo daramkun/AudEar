@@ -162,7 +162,7 @@ public:
 		CoTaskMemFree ( pwfx );
 
 		_sourceStream = audioStream;
-		AE_retainInterface ( _sourceStream );
+		//AE_retainInterface ( _sourceStream );
 
 		return AEERROR_NOERROR;
 	}

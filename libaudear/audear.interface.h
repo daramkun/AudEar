@@ -141,19 +141,19 @@ extern "C++"
 	template<typename T>
 	class AEAutoInterface {
 	public:
-		AEAutoInterface ( T * ptr = nullptr ) noexcept : i ( ptr ) { AE_retainInterface ( ptr ); }
-		~AEAutoInterface () noexcept { if ( i ) AE_releaseInterface ( ( void ** ) &i ); }
+		inline AEAutoInterface ( T * ptr = nullptr ) noexcept : i ( ptr ) { AE_retainInterface ( ptr ); }
+		inline ~AEAutoInterface () noexcept { if ( i ) AE_releaseInterface ( ( void ** ) &i ); }
 
-		void release () noexcept { if ( i ) AE_releaseInterface ( ( void ** ) &i ); }
-		void attach ( T * p ) noexcept { if ( i != p ) { release (); i = p; AE_retainInterface ( p ); } }
-		T* detach () noexcept { auto temp = i; i = nullptr; return temp; }
-		T* get () noexcept { AE_retainInterface ( i ); return i; }
+		inline void release () noexcept { if ( i ) AE_releaseInterface ( ( void ** ) &i ); }
+		inline void attach ( T * p ) noexcept { if ( i != p ) { release (); i = p; AE_retainInterface ( p ); } }
+		inline T* detach () noexcept { auto temp = i; i = nullptr; return temp; }
+		inline T* get () noexcept { AE_retainInterface ( i ); return i; }
 
-		T * operator= ( T * p ) noexcept { attach ( p ); return ( T* ) i; }
-		T * operator= ( const AEAutoInterface<T> & p ) noexcept { attach ( p.i ); return ( T* ) i; }
-		operator T * ( ) const noexcept { return reinterpret_cast< T* > ( i ); }
-		T ** operator& () noexcept { return ( T** ) ( &i ); }
-		T * operator-> () const noexcept { return reinterpret_cast< T* > ( i ); }
+		inline T * operator= ( T * p ) noexcept { attach ( p ); return ( T* ) i; }
+		inline T * operator= ( const AEAutoInterface<T> & p ) noexcept { attach ( p.i ); return ( T* ) i; }
+		inline operator T * ( ) const noexcept { return reinterpret_cast< T* > ( i ); }
+		inline T ** operator& () noexcept { return ( T** ) ( &i ); }
+		inline T * operator-> () const noexcept { return reinterpret_cast< T* > ( i ); }
 
 	private:
 		T * i;

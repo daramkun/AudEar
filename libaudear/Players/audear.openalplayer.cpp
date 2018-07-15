@@ -238,7 +238,7 @@ public:
 		}
 
 		_sourceStream = audioStream;
-		AE_retainInterface ( _sourceStream );
+		//AE_retainInterface ( _sourceStream );
 
 		return AEERROR_NOERROR;
 	}
