@@ -60,6 +60,25 @@ extern "C"
 	EXTC AEFEXP AEFILTERCOLLECTION AE_initializeEqualizerFilterCollectionWithGainDB ( int samplerate, double bandwidth, double * gainDBs );
 
 	EXTC AEFEXP error_t AE_createFilterAudioStream ( AEAUDIOSTREAM * stream, AEFILTERCOLLECTION * collection, bool collectionConst, AEAUDIOSTREAM ** ret );
+
+	typedef enum
+	{
+		AESC_NONE = 0,
+		AESC_CH1 = 1 << 0,
+		AESC_CH2 = 1 << 1,
+		AESC_CH3 = 1 << 2,
+		AESC_CH4 = 1 << 3,
+		AESC_CH5 = 1 << 4,
+		AESC_CH6 = 1 << 5,
+		AESC_CH7 = 1 << 6,
+		AESC_CH8 = 1 << 7,
+		AESC_CH9 = 1 << 8,
+		AESC_CH10 = 1 << 9,
+		AESC_AVGALL = 0xffffffff,
+	} AESPECTRUMCHANNELS;
+
+	EXTC AEFEXP error_t AE_createFrequencySpectrumAudioStream ( AEAUDIOSTREAM * stream, void ( *callback ) ( AESPECTRUMCHANNELS ch, float * freqs, int freqsCount ), AESPECTRUMCHANNELS ch, AEAUDIOSTREAM ** ret );
+	EXTC AEFEXP error_t AE_createDecibelSpectrumAudioStream ( AEAUDIOSTREAM * stream, void ( *callback ) ( AESPECTRUMCHANNELS ch, float * dbs, int dbsCount ), AESPECTRUMCHANNELS ch, AEAUDIOSTREAM ** ret );
 #ifdef __cplusplus
 }
 #endif

@@ -185,6 +185,7 @@
   <ItemGroup>
     <ClCompile Include="audear.filter.cpp" />
     <ClCompile Include="audear.filterstream.cpp" />
+    <ClCompile Include="audear.spectrumstream.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="Resources\libaudear.filter.rc" />

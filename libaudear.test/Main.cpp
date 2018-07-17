@@ -88,9 +88,6 @@ int main ( void )
 			HANDLE hConsole = GetStdHandle ( STD_OUTPUT_HANDLE );
 			if ( selected == i )
 				SetConsoleTextAttribute ( hConsole, BACKGROUND_BLUE | FOREGROUND_INTENSITY );
-			//if ( selected == i )
-			//	SetConsoleColors ( BACKGROUND_BLUE | FOREGROUND_INTENSITY );
-			//else SetConsoleColors ( BACKGROUND_INTENSITY | FOREGROUND_INTENSITY );
 			printf ( "%2.2lf", equalizerValue [ i ] );
 			SetConsoleTextAttribute ( hConsole, FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE );
 			printf ( " " );
