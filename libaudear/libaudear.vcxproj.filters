@@ -21,10 +21,11 @@
     <ClCompile Include="Base\audear.interface.cpp" />
     <ClCompile Include="Players\audear.wasapiplayer.cpp" />
     <ClCompile Include="Players\audear.openalplayer.cpp" />
-    <ClCompile Include="Streams\audear.convstreams.cpp" />
     <ClCompile Include="Decoders\audear.decoderdetector.cpp" />
     <ClCompile Include="Base\audear.cpp" />
     <ClCompile Include="Players\audear.xaudio2player.cpp" />
+    <ClCompile Include="Streams\audear.typeconvstreams.cpp" />
+    <ClCompile Include="Streams\audear.chconvstreams.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="Resources\libaudear.rc" />
