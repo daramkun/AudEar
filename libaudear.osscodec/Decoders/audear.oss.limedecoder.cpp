@@ -48,7 +48,9 @@ public:
 	}
 	~__LimeAudioDecoder ()
 	{
-
+		if ( hip != 0 )
+			hip_decode_exit ( hip );
+		hip = 0;
 	}
 
 public:
@@ -65,6 +67,7 @@ public:
 		this->stream.release ();
 		if ( hip != 0 )
 			hip_decode_exit ( hip );
+		hip = 0;
 
 		this->stream = stream;
 
