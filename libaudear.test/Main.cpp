@@ -21,9 +21,9 @@ int main ( void )
 
 	AE_unregisterAudioDecoderCreator ( AE_createMediaFoundationAudioDecoder );
 
-//#define FILENAME "./Samples/MP3 Sample with ID3 tag.mp3"
+#define FILENAME "./Samples/MP3 Sample with ID3 tag.mp3"
 //#define FILENAME "./Samples/FLAC Sample.flac"
-#define FILENAME "./Samples/WAV Sample.wav"
+//#define FILENAME "./Samples/WAV Sample.wav"
 	AEAutoInterface<AESTREAM> fileStream;
 	if ( ISERROR ( AE_createFileStream ( FILENAME, &fileStream ) ) )
 		return -1;
@@ -43,25 +43,29 @@ int main ( void )
 	AEFILTERCOLLECTION filters = AE_initializeEqualizerFilterCollection ( wf.samplesPerSec,
 		BANDWIDTH, AEEQP_NONE );
 	
-	AEAutoInterface<AEAUDIOSTREAM> toIEEE, toPCM, filterStream;
-	if ( ISERROR ( AE_createPCMToIEEEFloatAudioStream ( audioStream, &toIEEE ) ) )
+	AEAutoInterface<AEAUDIOSTREAM> to32bit, toIEEE, toPCM, filterStream, monoCh;
+	if ( ISERROR ( AE_createPCMToPCMAudioStream ( audioStream, 32, &to32bit ) ) )
 		return -4;
-	if ( ISERROR ( AE_createFilterAudioStream ( toIEEE, &filters, false, &filterStream ) ) )
+	if ( ISERROR ( AE_createPCMToIEEEFloatAudioStream ( to32bit, &toIEEE ) ) )
 		return -5;
-	if ( ISERROR ( AE_createIEEEFloatToPCMAudioStream ( filterStream, 16, &toPCM ) ) )
+	if ( ISERROR ( AE_createFilterAudioStream ( toIEEE, &filters, false, &filterStream ) ) )
 		return -6;
-
-	AEAutoInterface<AEAUDIOPLAYER> player;
-	if ( ISERROR ( AE_createWASAPIAudioPlayer ( nullptr, AEWASAPISM_SHARED, &player ) ) )
-	//if ( ISERROR ( AE_createXAudio2AudioPlayer ( 1, &player ) ) )
-	//if ( ISERROR ( AE_createOpenALAudioPlayer ( nullptr, &player ) ) )
+	if ( ISERROR ( AE_createMultiChannelsToMonoAudioStream ( filterStream, &monoCh ) ) )
 		return -7;
-
-	if ( ISERROR ( player->setSource ( player->object, /*audioStream*/toPCM ) ) )
+	if ( ISERROR ( AE_createIEEEFloatToPCMAudioStream ( monoCh, 16, &toPCM ) ) )
 		return -8;
 
-	if ( ISERROR ( player->play ( player->object ) ) )
+	AEAutoInterface<AEAUDIOPLAYER> player;
+	//if ( ISERROR ( AE_createWASAPIAudioPlayer ( nullptr, AEWASAPISM_SHARED, &player ) ) )
+	if ( ISERROR ( AE_createXAudio2AudioPlayer ( 1, &player ) ) )
+	//if ( ISERROR ( AE_createOpenALAudioPlayer ( nullptr, &player ) ) )
 		return -9;
+
+	if ( ISERROR ( player->setSource ( player->object, /*audioStream*/toPCM ) ) )
+		return -10;
+
+	if ( ISERROR ( player->play ( player->object ) ) )
+		return -10;
 
 	int selected = 0;
 	double equalizerValue [ 10 ] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };

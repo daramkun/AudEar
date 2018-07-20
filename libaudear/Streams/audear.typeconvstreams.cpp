@@ -1,6 +1,5 @@
 #include "../audear.h"
 #define USE_SIMD 1
-#define USE_PARALLEL 1
 #include "../InnerUtilities/TypeConverter.hpp"
 
 #include <memory>
