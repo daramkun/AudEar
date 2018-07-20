@@ -1,13 +1,25 @@
 #ifndef __AUDEAR_TYPE_CONVERTER_HPP__
 #define __AUDEAR_TYPE_CONVERTER_HPP__
 
+/***************************************************************************************************
+*
+* TypeConverter.hpp
+*   - 2018-07-20 Jin Jae-yeon
+*   - Functions module for PCM audio data converter
+*
+***************************************************************************************************/
+
 #include <cstdint>
 #if ( AE_ARCH_IA32 || AE_ARCH_AMD64 ) && USE_SIMD
+//  SSE 2
 #	include <mmintrin.h>
 #	include <emmintrin.h>
+//  SSE 3
 #	include <immintrin.h>
 #	include <pmmintrin.h>
+//  SSE 4
 #	include <smmintrin.h>
+//  AVX
 #	include <xmmintrin.h>
 #endif
 
@@ -18,19 +30,45 @@
 
 typedef bool ( *__TypeConverterFunction ) ( void * src, void * dest, int srcByteCount, int destByteSize );
 
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// 
+// Converters of 8-bit PCM data to
+// 
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// 8-bit PCM data to 16-bit PCM data
 extern "C" static inline bool __TC_int8_to_int16 ( void * src, void * dest, int srcByteCount, int destByteSize ) noexcept
 {
+#if ( AE_ARCH_IA32 || AE_ARCH_AMD64 ) && USE_SIMD
+	static __m128i converter = _mm_set1_epi16 ( 256 );
+#endif
+
 	if ( srcByteCount * 2 > destByteSize )
 		return false;
 
 	int8_t * srcBuffer = ( int8_t * ) src;
 	int16_t * destBuffer = ( int16_t * ) dest;
+#if ( AE_ARCH_IA32 || AE_ARCH_AMD64 ) && USE_SIMD
+	int loopCount = srcByteCount / 8 * 8;
+	for ( int i = 0; i < loopCount; i += 8 )
+	{
+		__m128i loaded = _mm_cvtepi8_epi16 ( _mm_loadl_epi64 ( ( __m128i* ) ( srcBuffer + i ) ) );
+		loaded = _mm_mullo_epi16 ( loaded, converter );
+		_mm_store_si128 ( ( __m128i* ) destBuffer, loaded );
+		destBuffer += 8; 
+	}
+	destBuffer = ( int16_t * ) dest;
+	for ( int i = loopCount; i < srcByteCount; ++i )
+		destBuffer [ i ] = ( int16_t ) ( ( ( int16_t ) srcBuffer [ i ] ) * 256 );
+#else
 	for ( int i = 0; i < srcByteCount; ++i )
 		destBuffer [ i ] = ( int16_t ) ( ( ( int16_t ) srcBuffer [ i ] ) * 256 );
+#endif
 
 	return true;
 }
 
+// 8-bit PCM data to 24-bit PCM data
 extern "C" static inline bool __TC_int8_to_int24 ( void * src, void * dest, int srcByteCount, int destByteSize ) noexcept
 {
 	if ( srcByteCount * 3 > destByteSize )
@@ -53,10 +91,11 @@ extern "C" static inline bool __TC_int8_to_int24 ( void * src, void * dest, int 
 	return true;
 }
 
+// 8-bit PCM data to 32-bit PCM data
 extern "C" static inline bool __TC_int8_to_int32 ( void * src, void * dest, int srcByteCount, int destByteSize ) noexcept
 {
 #if ( AE_ARCH_IA32 || AE_ARCH_AMD64 ) && USE_SIMD
-	static __m128 converter = _mm_set1_ps ( 16777216 );
+	static __m128i converter = _mm_set1_epi32 ( 16777216 );
 #endif
 
 	if ( srcByteCount * 4 > destByteSize )
@@ -68,14 +107,9 @@ extern "C" static inline bool __TC_int8_to_int32 ( void * src, void * dest, int 
 	int loopCount = srcByteCount / 4 * 4;
 	for ( int i = 0; i < loopCount; i += 4 )
 	{
-		__m128 loaded = _mm_setr_ps ( srcBuffer [ i ], srcBuffer [ i + 1 ], srcBuffer [ i + 2 ], srcBuffer [ i + 3 ] );
-		loaded = _mm_mul_ps ( loaded, converter );
-		float arr [ 4 ];
-		_mm_store_ps ( arr, loaded );
-		destBuffer [ 0 ] = ( int32_t ) arr [ 0 ];
-		destBuffer [ 1 ] = ( int32_t ) arr [ 1 ];
-		destBuffer [ 2 ] = ( int32_t ) arr [ 2 ];
-		destBuffer [ 3 ] = ( int32_t ) arr [ 3 ];
+		__m128i loaded = _mm_cvtepi8_epi32 ( _mm_loadl_epi64 ( ( __m128i * ) ( srcBuffer + i ) ) );
+		loaded = _mm_mullo_epi32 ( loaded, converter );
+		_mm_store_si128 ( ( __m128i* ) destBuffer, loaded );
 		destBuffer += 4;
 	}
 	destBuffer = ( int32_t * ) dest;
@@ -89,6 +123,7 @@ extern "C" static inline bool __TC_int8_to_int32 ( void * src, void * dest, int 
 	return true;
 }
 
+// 8-bit PCM data to IEEE 754 Floating point PCM data
 extern "C" static inline bool __TC_int8_to_float ( void * src, void * dest, int srcByteCount, int destByteSize ) noexcept
 {
 #if ( AE_ARCH_IA32 || AE_ARCH_AMD64 ) && USE_SIMD
@@ -104,7 +139,7 @@ extern "C" static inline bool __TC_int8_to_float ( void * src, void * dest, int 
 	int loopCount = srcByteCount / 4 * 4;
 	for ( int i = 0; i < loopCount; i += 4 )
 	{
-		__m128 loaded = _mm_setr_ps ( srcBuffer [ i ], srcBuffer [ i + 1 ], srcBuffer [ i + 2 ], srcBuffer [ i + 3 ] );
+		__m128 loaded = _mm_cvtepi32_ps ( _mm_cvtepi8_epi32 ( _mm_loadl_epi64 ( ( __m128i * ) ( srcBuffer + i ) ) ) );
 		loaded = _mm_mul_ps ( loaded, converter );
 		_mm_store_ps ( destBuffer, loaded );
 		destBuffer += 4;
@@ -120,6 +155,13 @@ extern "C" static inline bool __TC_int8_to_float ( void * src, void * dest, int 
 	return true;
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// 
+// Converters of 16-bit PCM data to
+// 
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// 16-bit PCM data to 8-bit PCM data
 extern "C" static inline bool __TC_int16_to_int8 ( void * src, void * dest, int srcByteCount, int destByteSize ) noexcept
 {
 	if ( srcByteCount > destByteSize * 2 )
@@ -134,6 +176,7 @@ extern "C" static inline bool __TC_int16_to_int8 ( void * src, void * dest, int 
 	return true;
 }
 
+// 16-bit PCM data to 24-bit PCM data
 extern "C" static inline bool __TC_int16_to_int24 ( void * src, void * dest, int srcByteCount, int destByteSize ) noexcept
 {
 	if ( srcByteCount / 2 > destByteSize / 3 )
@@ -157,6 +200,7 @@ extern "C" static inline bool __TC_int16_to_int24 ( void * src, void * dest, int
 	return true;
 }
 
+// 16-bit PCM data to 32-bit PCM data
 extern "C" static inline bool __TC_int16_to_int32 ( void * src, void * dest, int srcByteCount, int destByteSize ) noexcept
 {
 	if ( srcByteCount * 2 > destByteSize )
@@ -171,6 +215,7 @@ extern "C" static inline bool __TC_int16_to_int32 ( void * src, void * dest, int
 	return true;
 }
 
+// 16-bit PCM data to 32-bit IEEE 754 Floating point PCM data
 extern "C" static inline bool __TC_int16_to_float ( void * src, void * dest, int srcByteCount, int destByteSize ) noexcept
 {
 #if ( AE_ARCH_IA32 || AE_ARCH_AMD64 ) && USE_SIMD
@@ -204,6 +249,13 @@ extern "C" static inline bool __TC_int16_to_float ( void * src, void * dest, int
 	return true;
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// 
+// Converters of 24-bit PCM data to
+// 
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// 24-bit PCM data to 8-bit PCM data
 extern "C" static inline bool __TC_int24_to_int8 ( void * src, void * dest, int srcByteCount, int destByteSize ) noexcept
 {
 	if ( srcByteCount > destByteSize * 3 )
@@ -221,6 +273,7 @@ extern "C" static inline bool __TC_int24_to_int8 ( void * src, void * dest, int 
 	return true;
 }
 
+// 24-bit PCM data to 16-bit PCM data
 extern "C" static inline bool __TC_int24_to_int16 ( void * src, void * dest, int srcByteCount, int destByteSize ) noexcept
 {
 	if ( srcByteCount / 3 > destByteSize / 2 )
@@ -238,6 +291,7 @@ extern "C" static inline bool __TC_int24_to_int16 ( void * src, void * dest, int
 	return true;
 }
 
+// 24-bit PCM data to 32-bit PCM data
 extern "C" static inline bool __TC_int24_to_int32 ( void * src, void * dest, int srcByteCount, int destByteSize ) noexcept
 {
 	if ( srcByteCount / 3 > destByteSize / 4 )
@@ -255,6 +309,7 @@ extern "C" static inline bool __TC_int24_to_int32 ( void * src, void * dest, int
 	return true;
 }
 
+// 24-bit PCM data to 32-bit IEEE 754 Floating point PCM data
 extern "C" static inline bool __TC_int24_to_float ( void * src, void * dest, int srcByteCount, int destByteSize ) noexcept
 {
 	if ( srcByteCount / 3 > destByteSize / 4 )
@@ -273,6 +328,13 @@ extern "C" static inline bool __TC_int24_to_float ( void * src, void * dest, int
 	return true;
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// 
+// Converters of 32-bit PCM data to
+// 
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// 32-bit PCM data to 8-bit PCM data
 extern "C" static inline bool __TC_int32_to_int8 ( void * src, void * dest, int srcByteCount, int destByteSize ) noexcept
 {
 	if ( srcByteCount > destByteSize * 4 )
@@ -287,6 +349,7 @@ extern "C" static inline bool __TC_int32_to_int8 ( void * src, void * dest, int 
 	return true;
 }
 
+// 32-bit PCM data to 16-bit PCM data
 extern "C" static inline bool __TC_int32_to_int16 ( void * src, void * dest, int srcByteCount, int destByteSize ) noexcept
 {
 	if ( srcByteCount > destByteSize * 4 )
@@ -301,6 +364,7 @@ extern "C" static inline bool __TC_int32_to_int16 ( void * src, void * dest, int
 	return true;
 }
 
+// 32-bit PCM data to 24-bit PCM data
 extern "C" static inline bool __TC_int32_to_int24 ( void * src, void * dest, int srcByteCount, int destByteSize ) noexcept
 {
 	if ( srcByteCount > destByteSize * 4 )
@@ -323,6 +387,7 @@ extern "C" static inline bool __TC_int32_to_int24 ( void * src, void * dest, int
 	return true;
 }
 
+// 32-bit PCM data to 32-bit IEEE 754 Floating point PCM data
 extern "C" static inline bool __TC_int32_to_float ( void * src, void * dest, int srcByteCount, int destByteSize ) noexcept
 {
 #if ( AE_ARCH_IA32 || AE_ARCH_AMD64 ) && USE_SIMD
@@ -356,6 +421,13 @@ extern "C" static inline bool __TC_int32_to_float ( void * src, void * dest, int
 	return true;
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// 
+// Converters of 32-bit IEEE 754 Floating point data to
+// 
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// 32-bit IEEE 754 Floating point PCM data to 8-bit PCM data
 extern "C" static inline bool __TC_float_to_int8 ( void * src, void * dest, int srcByteCount, int destByteSize ) noexcept
 {
 #if ( AE_ARCH_IA32 || AE_ARCH_AMD64 ) && USE_SIMD
@@ -396,6 +468,7 @@ extern "C" static inline bool __TC_float_to_int8 ( void * src, void * dest, int 
 	return true;
 }
 
+// 32-bit IEEE 754 Floating point PCM data to 16-bit PCM data
 extern "C" static inline bool __TC_float_to_int16 ( void * src, void * dest, int srcByteCount, int destByteSize ) noexcept
 {
 #if ( AE_ARCH_IA32 || AE_ARCH_AMD64 ) && USE_SIMD
@@ -436,6 +509,7 @@ extern "C" static inline bool __TC_float_to_int16 ( void * src, void * dest, int
 	return true;
 }
 
+// 32-bit IEEE 754 Floating point PCM data to 24-bit PCM data
 extern "C" static inline bool __TC_float_to_int24 ( void * src, void * dest, int srcByteCount, int destByteSize ) noexcept
 {
 	if ( srcByteCount / 4 > destByteSize / 3 )
@@ -459,6 +533,7 @@ extern "C" static inline bool __TC_float_to_int24 ( void * src, void * dest, int
 	return true;
 }
 
+// 32-bit IEEE 754 Floating point PCM data to 32-bit PCM data
 extern "C" static inline bool __TC_float_to_int32 ( void * src, void * dest, int srcByteCount, int destByteSize ) noexcept
 {
 #if ( AE_ARCH_IA32 || AE_ARCH_AMD64 ) && USE_SIMD
