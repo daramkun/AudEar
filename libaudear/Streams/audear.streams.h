@@ -20,5 +20,6 @@ EXTC AEEXP error_t AE_createPCMToPCMAudioStream ( AEAUDIOSTREAM * stream, int bp
 EXTC AEEXP error_t AE_createConverterAudioStream ( AEAUDIOSTREAM * stream, AEAUDIOFORMAT af, int bps, AEAUDIOSTREAM ** ret );
 
 EXTC AEEXP error_t AE_createMultiChannelsToMonoAudioStream ( AEAUDIOSTREAM * stream, AEAUDIOSTREAM ** ret );
+EXTC AEEXP error_t AE_createMonoToStereoAudioStream ( AEAUDIOSTREAM * stream, AEAUDIOSTREAM ** ret );
 
 #endif

@@ -12,6 +12,7 @@
     <ClInclude Include="InnerUtilities\MemoryStream.hpp" />
     <ClInclude Include="InnerUtilities\Thread.hpp" />
     <ClInclude Include="InnerUtilities\HighResolutionTimer.hpp" />
+    <ClInclude Include="InnerUtilities\TypeConverter.hpp" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Decoders\audear.mfdecoder.cpp" />
