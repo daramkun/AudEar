@@ -19,8 +19,6 @@
 #	include <pmmintrin.h>
 //  SSE 4
 #	include <smmintrin.h>
-//  AVX
-#	include <xmmintrin.h>
 #endif
 
 #define __TC_INV_CHAR										0.0078125
@@ -232,7 +230,7 @@ extern "C" static inline bool __TC_int16_to_float ( void * src, void * dest, int
 	int SIMDLoopCount = loopCount / 4 * 4;
 	for ( int i = 0; i < SIMDLoopCount; i += 4 )
 	{
-		__m128 loaded = _mm_setr_ps ( srcBuffer [ i ], srcBuffer [ i + 1 ], srcBuffer [ i + 2 ], srcBuffer [ i + 3 ] );
+		__m128 loaded = _mm_cvtepi32_ps ( _mm_cvtepi16_epi32 ( _mm_loadl_epi64 ( ( __m128i * ) ( srcBuffer + i ) ) ) );
 		loaded = _mm_mul_ps ( loaded, converter );
 		_mm_store_ps ( destBuffer, loaded );
 		destBuffer += 4;
@@ -499,11 +497,11 @@ extern "C" static inline bool __TC_float_to_int16 ( void * src, void * dest, int
 	}
 	destBuffer = ( int16_t * ) dest;
 	for ( int i = SIMDLoopCount; i < loopCount; ++i )
-		destBuffer [ i ] = ( int16_t ) ( srcBuffer [ i ] * SHRT_MAX );
+		destBuffer [ i ] = ( int16_t ) ( min ( 1, max ( -1, srcBuffer [ i ] ) ) * SHRT_MAX );
 #else
 	int loopCount = srcByteCount / 4;
 	for ( int i = 0; i < loopCount; ++i )
-		destBuffer [ i ] = ( int16_t ) ( srcBuffer [ i ] * SHRT_MAX );
+		destBuffer [ i ] = ( int16_t ) ( min ( 1, max ( -1, srcBuffer [ i ] ) ) * SHRT_MAX );
 #endif
 
 	return true;
@@ -520,7 +518,7 @@ extern "C" static inline bool __TC_float_to_int24 ( void * src, void * dest, int
 	int loopCount = srcByteCount / 4;
 	for ( int i = 0; i < loopCount; ++i )
 	{
-		int32_t temp = ( int32_t ) ( srcBuffer [ i ] * 8388607 );
+		int32_t temp = ( int32_t ) ( min ( 1, max ( -1, srcBuffer [ i ] ) ) * 8388607 );
 		int8_t _1 = ( int8_t ) ( ( temp >> 24 ) & 0xff ),
 			_2 = ( int8_t ) ( ( temp >> 16 ) & 0xff ),
 			_3 = ( int8_t ) ( temp & 0xff );
@@ -536,7 +534,7 @@ extern "C" static inline bool __TC_float_to_int24 ( void * src, void * dest, int
 // 32-bit IEEE 754 Floating point PCM data to 32-bit PCM data
 extern "C" static inline bool __TC_float_to_int32 ( void * src, void * dest, int srcByteCount, int destByteSize ) noexcept
 {
-#if ( AE_ARCH_IA32 || AE_ARCH_AMD64 ) && USE_SIMD
+#if ( /*AE_ARCH_IA32 || */AE_ARCH_AMD64 ) && USE_SIMD
 	static __m128 converter = _mm_set1_ps ( ( float ) INT_MAX );
 	static __m128 minVal = _mm_set1_ps ( 1 );
 	static __m128 maxVal = _mm_set1_ps ( -1 );
@@ -547,29 +545,20 @@ extern "C" static inline bool __TC_float_to_int32 ( void * src, void * dest, int
 
 	float * srcBuffer = ( float * ) src;
 	int32_t * destBuffer = ( int32_t * ) dest;
-#if ( AE_ARCH_IA32 || AE_ARCH_AMD64 ) && USE_SIMD
 	int loopCount = srcByteCount / 4;
+#if ( /*AE_ARCH_IA32 || */AE_ARCH_AMD64 ) && USE_SIMD		//< Faster only in 64-bit Process. Tested on AMD Ryzen 5 2600X.
 	int SIMDLoopCount = loopCount / 4 * 4;
 	for ( int i = 0; i < SIMDLoopCount; i += 4 )
 	{
 		__m128 loaded = _mm_load_ps ( srcBuffer + i );
 		loaded = _mm_mul_ps ( _mm_min_ps ( minVal, _mm_max_ps ( maxVal, loaded ) ), converter );
-		__m128i conved = _mm_cvtps_epi32 ( loaded );
-		float arr [ 4 ];
-		_mm_store_ps ( arr, loaded );
-		destBuffer [ 0 ] = ( int32_t ) arr [ 0 ];
-		destBuffer [ 1 ] = ( int32_t ) arr [ 1 ];
-		destBuffer [ 2 ] = ( int32_t ) arr [ 2 ];
-		destBuffer [ 3 ] = ( int32_t ) arr [ 3 ];
-		destBuffer += 4;
+		_mm_store_si128 ( ( __m128i * ) ( destBuffer + i ), _mm_cvtps_epi32 ( loaded ) );
 	}
-	destBuffer = ( int32_t * ) dest;
 	for ( int i = SIMDLoopCount; i < loopCount; ++i )
-		destBuffer [ i ] = ( int32_t ) ( srcBuffer [ i ] * INT_MAX );
+		destBuffer [ i ] = ( int32_t ) ( min ( 1, max ( -1, srcBuffer [ i ] ) ) * INT_MAX );
 #else
-	int loopCount = srcByteCount / 4;
 	for ( int i = 0; i < loopCount; ++i )
-		destBuffer [ i ] = ( int32_t ) ( srcBuffer [ i ] * INT_MAX );
+		destBuffer [ i ] = ( int32_t ) ( min ( 1, max ( -1, srcBuffer [ i ] ) ) * INT_MAX );
 #endif
 
 	return true;
