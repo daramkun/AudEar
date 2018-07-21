@@ -21,10 +21,25 @@
 #	include <smmintrin.h>
 #endif
 
+#define __TC_CHAR											SCHAR_MAX.0f
+#define __TC_SHORT											SHRT_MAX.0f
+#define __TC_24BIT											8388607.0f
+#define __TC_INT											INT_MAX.0f
+
 #define __TC_INV_CHAR										0.0078125
 #define __TC_INV_SHORT										3.0518509475997192297128208258309e-5
 #define __TC_INV_24BIT										1.1920930376163765926810017443897e-7
 #define __TC_INV_INT										4.656612875245796924105750827168e-10
+
+static __m128i __g_TC_int8_to_int16_converter = _mm_set1_epi16 ( ( short ) ( __TC_SHORT / __TC_CHAR ) );
+static __m128i __g_TC_int8_to_int24_converter = _mm_set1_epi16 ( ( short ) ( __TC_24BIT / __TC_CHAR ) );
+static __m128i __g_TC_int8_to_int32_converter = _mm_set1_epi16 ( ( short ) ( __TC_INT / __TC_CHAR ) );
+static __m128  __g_TC_int8_to_float_converter = _mm_set1_ps ( __TC_INV_CHAR );
+
+//static __m128i __g_TC_int16_to_int8_converter = _mm_set1_epi16 ( ( short ) ( __TC_CHAR / __TC_SHORT ) );
+static __m128i __g_TC_int16_to_int24_converter = _mm_set1_epi16 ( ( short ) ( __TC_24BIT / __TC_SHORT ) );
+static __m128i __g_TC_int16_to_int32_converter = _mm_set1_epi16 ( ( short ) ( __TC_INT / __TC_SHORT ) );
+static __m128  __g_TC_int16_to_float_converter = _mm_set1_ps ( __TC_INV_SHORT );
 
 typedef bool ( *__TypeConverterFunction ) ( void * src, void * dest, int srcByteCount, int destByteSize );
 
@@ -429,7 +444,7 @@ extern "C" static inline bool __TC_int32_to_float ( void * src, void * dest, int
 extern "C" static inline bool __TC_float_to_int8 ( void * src, void * dest, int srcByteCount, int destByteSize ) noexcept
 {
 #if ( AE_ARCH_IA32 || AE_ARCH_AMD64 ) && USE_SIMD
-	static __m128 converter = _mm_set1_ps ( 128 );
+	static __m128 converter = _mm_set1_ps ( __TC_CHAR );
 	static __m128 minVal = _mm_set1_ps ( 1 );
 	static __m128 maxVal = _mm_set1_ps ( -1 );
 	static __m128i shuffle = _mm_setr_epi8 ( 0, 4, 8, 12, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 );
@@ -467,7 +482,7 @@ extern "C" static inline bool __TC_float_to_int8 ( void * src, void * dest, int 
 extern "C" static inline bool __TC_float_to_int16 ( void * src, void * dest, int srcByteCount, int destByteSize ) noexcept
 {
 #if ( AE_ARCH_IA32 || AE_ARCH_AMD64 ) && USE_SIMD
-	static __m128 converter = _mm_set1_ps ( SHRT_MAX );
+	static __m128 converter = _mm_set1_ps ( __TC_SHORT );
 	static __m128 minVal = _mm_set1_ps ( 1 );
 	static __m128 maxVal = _mm_set1_ps ( -1 );
 	static __m128i zero = _mm_setzero_si128 ();
@@ -512,7 +527,7 @@ extern "C" static inline bool __TC_float_to_int24 ( void * src, void * dest, int
 	int loopCount = srcByteCount / 4;
 	for ( int i = 0; i < loopCount; ++i )
 	{
-		int32_t temp = ( int32_t ) ( min ( 1, max ( -1, srcBuffer [ i ] ) ) * 8388607 );
+		int32_t temp = ( int32_t ) ( min ( 1, max ( -1, srcBuffer [ i ] ) ) * __TC_24BIT );
 		int8_t _1 = ( int8_t ) ( ( temp >> 24 ) & 0xff ),
 			_2 = ( int8_t ) ( ( temp >> 16 ) & 0xff ),
 			_3 = ( int8_t ) ( temp & 0xff );
@@ -529,7 +544,7 @@ extern "C" static inline bool __TC_float_to_int24 ( void * src, void * dest, int
 extern "C" static inline bool __TC_float_to_int32 ( void * src, void * dest, int srcByteCount, int destByteSize ) noexcept
 {
 #if ( /*AE_ARCH_IA32 || */AE_ARCH_AMD64 ) && USE_SIMD
-	static __m128 converter = _mm_set1_ps ( ( float ) INT_MAX );
+	static __m128 converter = _mm_set1_ps ( __TC_INT );
 	static __m128 minVal = _mm_set1_ps ( 1 );
 	static __m128 maxVal = _mm_set1_ps ( -1 );
 #endif
