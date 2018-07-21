@@ -10,7 +10,7 @@
 #	include <sys/time.h>
 #endif
 
-static inline int64_t __HRT_GetFrequency ()
+static inline int64_t __HRT_GetFrequency () noexcept
 {
 #if AE_PLATFORM_WINDOWS || AE_PLATFORM_UWP
 	LARGE_INTEGER freq;
@@ -22,7 +22,7 @@ static inline int64_t __HRT_GetFrequency ()
 #endif
 }
 
-static inline int64_t __HRT_GetCounter ()
+static inline int64_t __HRT_GetCounter () noexcept
 {
 #if AE_PLATFORM_WINDOWS || AE_PLATFORM_UWP
 	LARGE_INTEGER counter;

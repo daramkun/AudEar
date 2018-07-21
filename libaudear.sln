@@ -28,6 +28,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "libaudear.osscodec", "libau
 		{723BF1AC-E90E-4585-82FF-CBB895E2E951} = {723BF1AC-E90E-4585-82FF-CBB895E2E951}
 	EndProjectSection
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "libaudear.typeconvtest", "libaudear.typeconvtest\libaudear.typeconvtest.vcxproj", "{6267254F-86FC-4D5F-9AA6-198486956FFD}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -68,6 +70,14 @@ Global
 		{8ECA67E6-0194-4278-BD13-22090BEA3439}.Release|x64.Build.0 = Release|x64
 		{8ECA67E6-0194-4278-BD13-22090BEA3439}.Release|x86.ActiveCfg = Release|Win32
 		{8ECA67E6-0194-4278-BD13-22090BEA3439}.Release|x86.Build.0 = Release|Win32
+		{6267254F-86FC-4D5F-9AA6-198486956FFD}.Debug|x64.ActiveCfg = Debug|x64
+		{6267254F-86FC-4D5F-9AA6-198486956FFD}.Debug|x64.Build.0 = Debug|x64
+		{6267254F-86FC-4D5F-9AA6-198486956FFD}.Debug|x86.ActiveCfg = Debug|Win32
+		{6267254F-86FC-4D5F-9AA6-198486956FFD}.Debug|x86.Build.0 = Debug|Win32
+		{6267254F-86FC-4D5F-9AA6-198486956FFD}.Release|x64.ActiveCfg = Release|x64
+		{6267254F-86FC-4D5F-9AA6-198486956FFD}.Release|x64.Build.0 = Release|x64
+		{6267254F-86FC-4D5F-9AA6-198486956FFD}.Release|x86.ActiveCfg = Release|Win32
+		{6267254F-86FC-4D5F-9AA6-198486956FFD}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -77,6 +87,7 @@ Global
 		{0775FC02-FF13-4A3A-939F-29E299EFF7C2} = {0C2172DA-377B-4643-A7CD-6E73F5A3D6F6}
 		{86E53F65-C3A5-4716-A2C1-CC934A4546C7} = {36717578-19DE-46CE-B777-201A7874A838}
 		{8ECA67E6-0194-4278-BD13-22090BEA3439} = {36717578-19DE-46CE-B777-201A7874A838}
+		{6267254F-86FC-4D5F-9AA6-198486956FFD} = {0C2172DA-377B-4643-A7CD-6E73F5A3D6F6}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {0AA8F399-0279-4980-9A0F-62E20ED2EC48}

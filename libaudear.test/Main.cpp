@@ -44,7 +44,7 @@ int main ( void )
 		BANDWIDTH, AEEQP_NONE );
 	
 	AEAutoInterface<AEAUDIOSTREAM> to32bit, toIEEE, toPCM, filterStream, monoCh;
-	if ( ISERROR ( AE_createPCMToPCMAudioStream ( audioStream, 32, &to32bit ) ) )
+	if ( ISERROR ( AE_createPCMToPCMAudioStream ( audioStream, 16, &to32bit ) ) )
 		return -4;
 	if ( ISERROR ( AE_createPCMToIEEEFloatAudioStream ( to32bit, &toIEEE ) ) )
 		return -5;

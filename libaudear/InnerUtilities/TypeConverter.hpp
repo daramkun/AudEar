@@ -216,8 +216,8 @@ extern "C" static inline bool __TC_int16_to_int32 ( void * src, void * dest, int
 // 16-bit PCM data to 32-bit IEEE 754 Floating point PCM data
 extern "C" static inline bool __TC_int16_to_float ( void * src, void * dest, int srcByteCount, int destByteSize ) noexcept
 {
-#if ( AE_ARCH_IA32 || AE_ARCH_AMD64 ) && USE_SIMD
-	static __m128 converter = _mm_set1_ps ( __TC_INV_SHORT );
+#if ( /*AE_ARCH_IA32 || */AE_ARCH_AMD64 ) && USE_SIMD
+	static __m128 converter = _mm_set1_ps ( ( float ) __TC_INV_SHORT );
 #endif
 
 	if ( srcByteCount * 2 > destByteSize )
@@ -225,8 +225,10 @@ extern "C" static inline bool __TC_int16_to_float ( void * src, void * dest, int
 
 	int16_t * srcBuffer = ( int16_t * ) src;
 	float * destBuffer = ( float * ) dest;
-#if ( AE_ARCH_IA32 || AE_ARCH_AMD64 ) && USE_SIMD
 	int loopCount = srcByteCount / 2;
+#if ( /*AE_ARCH_IA32 || */AE_ARCH_AMD64 ) && USE_SIMD		//< Faster only in 64-bit Process. Tested on AMD Ryzen 5 2600X.
+															//  SIMD faster than Plain C++ in Debug mode 32-bit Process.
+															//  but Release mode 32-bit is slower.
 	int SIMDLoopCount = loopCount / 4 * 4;
 	for ( int i = 0; i < SIMDLoopCount; i += 4 )
 	{
@@ -239,7 +241,6 @@ extern "C" static inline bool __TC_int16_to_float ( void * src, void * dest, int
 	for ( int i = SIMDLoopCount; i < loopCount; ++i )
 		destBuffer [ i ] = ( float ) ( srcBuffer [ i ] * __TC_INV_SHORT );
 #else
-	int loopCount = srcByteCount / 2;
 	for ( int i = 0; i < loopCount; ++i )
 		destBuffer [ i ] = ( float ) ( srcBuffer [ i ] * __TC_INV_SHORT );
 #endif
@@ -389,7 +390,7 @@ extern "C" static inline bool __TC_int32_to_int24 ( void * src, void * dest, int
 extern "C" static inline bool __TC_int32_to_float ( void * src, void * dest, int srcByteCount, int destByteSize ) noexcept
 {
 #if ( AE_ARCH_IA32 || AE_ARCH_AMD64 ) && USE_SIMD
-	static __m128 converter = _mm_set1_ps ( __TC_INV_INT );
+	static __m128 converter = _mm_set1_ps ( ( float ) __TC_INV_INT );
 #endif
 
 	if ( srcByteCount > destByteSize )
@@ -397,8 +398,8 @@ extern "C" static inline bool __TC_int32_to_float ( void * src, void * dest, int
 
 	int32_t * srcBuffer = ( int32_t * ) src;
 	float * destBuffer = ( float * ) dest;
-#if ( AE_ARCH_IA32 || AE_ARCH_AMD64 ) && USE_SIMD
 	int loopCount = srcByteCount / 4;
+#if ( AE_ARCH_IA32 || AE_ARCH_AMD64 ) && USE_SIMD
 	int SIMDLoopCount = loopCount / 4 * 4;
 	for ( int i = 0; i < SIMDLoopCount; i += 4 )
 	{
@@ -411,7 +412,6 @@ extern "C" static inline bool __TC_int32_to_float ( void * src, void * dest, int
 	for ( int i = SIMDLoopCount; i < loopCount; ++i )
 		destBuffer [ i ] = ( float ) ( srcBuffer [ i ] * __TC_INV_INT );
 #else
-	int loopCount = srcByteCount / 2;
 	for ( int i = 0; i < loopCount; ++i )
 		destBuffer [ i ] = ( float ) ( srcBuffer [ i ] * __TC_INV_INT );
 #endif
@@ -432,6 +432,7 @@ extern "C" static inline bool __TC_float_to_int8 ( void * src, void * dest, int 
 	static __m128 converter = _mm_set1_ps ( 128 );
 	static __m128 minVal = _mm_set1_ps ( 1 );
 	static __m128 maxVal = _mm_set1_ps ( -1 );
+	static __m128i shuffle = _mm_setr_epi8 ( 0, 4, 8, 12, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 );
 #endif
 
 	if ( srcByteCount > destByteSize * 4 )
@@ -439,26 +440,22 @@ extern "C" static inline bool __TC_float_to_int8 ( void * src, void * dest, int 
 
 	float * srcBuffer = ( float * ) src;
 	int8_t * destBuffer = ( int8_t * ) dest;
-#if ( AE_ARCH_IA32 || AE_ARCH_AMD64 ) && USE_SIMD
 	int loopCount = srcByteCount / 4;
+#if ( AE_ARCH_IA32 || AE_ARCH_AMD64 ) && USE_SIMD
 	int SIMDLoopCount = loopCount / 4 * 4;
 	for ( int i = 0; i < SIMDLoopCount; i += 4 )
 	{
 		__m128 loaded = _mm_load_ps ( srcBuffer + i );
 		loaded = _mm_mul_ps ( _mm_min_ps ( minVal, _mm_max_ps ( maxVal, loaded ) ), converter );
-		float arr [ 4 ];
-		_mm_store_ps ( arr, loaded );
-		destBuffer [ 0 ] = ( int8_t ) arr [ 0 ];
-		destBuffer [ 1 ] = ( int8_t ) arr [ 1 ];
-		destBuffer [ 2 ] = ( int8_t ) arr [ 2 ];
-		destBuffer [ 3 ] = ( int8_t ) arr [ 3 ];
+		int8_t arr [ 16 ];
+		_mm_storel_epi64 ( ( __m128i * ) &arr, _mm_shuffle_epi8 ( _mm_cvtps_epi32 ( loaded ), shuffle ) );
+		memcpy ( destBuffer, arr, 4 );
 		destBuffer += 4;
 	}
 	destBuffer = ( int8_t * ) dest;
 	for ( int i = SIMDLoopCount; i < loopCount; ++i )
 		destBuffer [ i ] = ( int8_t ) ( srcBuffer [ i ] * 128 );
 #else
-	int loopCount = srcByteCount / 4;
 	for ( int i = 0; i < loopCount; ++i )
 		destBuffer [ i ] = ( int8_t ) ( srcBuffer [ i ] * 128 );
 #endif
@@ -473,6 +470,7 @@ extern "C" static inline bool __TC_float_to_int16 ( void * src, void * dest, int
 	static __m128 converter = _mm_set1_ps ( SHRT_MAX );
 	static __m128 minVal = _mm_set1_ps ( 1 );
 	static __m128 maxVal = _mm_set1_ps ( -1 );
+	static __m128i zero = _mm_setzero_si128 ();
 #endif
 
 	if ( srcByteCount > destByteSize * 2 )
@@ -480,26 +478,22 @@ extern "C" static inline bool __TC_float_to_int16 ( void * src, void * dest, int
 
 	float * srcBuffer = ( float * ) src;
 	int16_t * destBuffer = ( int16_t * ) dest;
-#if ( AE_ARCH_IA32 || AE_ARCH_AMD64 ) && USE_SIMD
 	int loopCount = srcByteCount / 4;
+#if ( AE_ARCH_IA32 || AE_ARCH_AMD64 ) && USE_SIMD
 	int SIMDLoopCount = loopCount / 4 * 4;
 	for ( int i = 0; i < SIMDLoopCount; i += 4 )
 	{
 		__m128 loaded = _mm_load_ps ( srcBuffer + i );
 		loaded = _mm_mul_ps ( _mm_min_ps ( minVal, _mm_max_ps ( maxVal, loaded ) ), converter );
-		float arr [ 4 ];
-		_mm_store_ps ( arr, loaded );
-		destBuffer [ 0 ] = ( int16_t ) arr [ 0 ];
-		destBuffer [ 1 ] = ( int16_t ) arr [ 1 ];
-		destBuffer [ 2 ] = ( int16_t ) arr [ 2 ];
-		destBuffer [ 3 ] = ( int16_t ) arr [ 3 ];
+		int16_t arr [ 8 ];
+		_mm_storel_epi64 ( ( __m128i * ) &arr, _mm_packs_epi32 ( _mm_cvtps_epi32 ( loaded ), zero ) );
+		memcpy ( destBuffer, arr, 8 );
 		destBuffer += 4;
 	}
 	destBuffer = ( int16_t * ) dest;
 	for ( int i = SIMDLoopCount; i < loopCount; ++i )
 		destBuffer [ i ] = ( int16_t ) ( min ( 1, max ( -1, srcBuffer [ i ] ) ) * SHRT_MAX );
 #else
-	int loopCount = srcByteCount / 4;
 	for ( int i = 0; i < loopCount; ++i )
 		destBuffer [ i ] = ( int16_t ) ( min ( 1, max ( -1, srcBuffer [ i ] ) ) * SHRT_MAX );
 #endif
@@ -547,6 +541,8 @@ extern "C" static inline bool __TC_float_to_int32 ( void * src, void * dest, int
 	int32_t * destBuffer = ( int32_t * ) dest;
 	int loopCount = srcByteCount / 4;
 #if ( /*AE_ARCH_IA32 || */AE_ARCH_AMD64 ) && USE_SIMD		//< Faster only in 64-bit Process. Tested on AMD Ryzen 5 2600X.
+															//  SIMD faster than Plain C++ in Debug mode 32-bit Process.
+															//  but Release mode 32-bit is slower.
 	int SIMDLoopCount = loopCount / 4 * 4;
 	for ( int i = 0; i < SIMDLoopCount; i += 4 )
 	{
