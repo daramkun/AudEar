@@ -242,6 +242,8 @@ template<> static inline bool __TC_sample_convert_sse<float, int16_t> ( const vo
 	if ( srcByteCount > destByteSize * 2 )
 		return false;
 
+	int16_t arr [ 8 ];
+
 	float * srcBuffer = ( float * ) src;
 	int16_t * destBuffer = ( int16_t * ) dest;
 	int64_t loopCount = srcByteCount / 4;
@@ -249,7 +251,6 @@ template<> static inline bool __TC_sample_convert_sse<float, int16_t> ( const vo
 	for ( int64_t i = 0; i < SIMDLoopCount; i += 4 )
 	{
 		__m128i loaded = __TC_convert ( _mm_load_ps ( srcBuffer + i ), f32_to_i16_converter );
-		int16_t arr [ 8 ];
 		_mm_storel_epi64 ( ( __m128i * ) &arr, _mm_packs_epi32 ( loaded, zero_int ) );
 		memcpy ( destBuffer + i, arr, 8 );
 	}
@@ -302,8 +303,12 @@ template<> static inline bool __TC_sample_convert_sse<float, int32_t> ( const vo
 
 	return true;
 }
-/*static inline bool __TC_sample_convert_sse_i8_i16 ( const void * src, void * dest, int64_t srcByteCount, int64_t destByteSize ) noexcept
+template<> static inline bool __TC_sample_convert_sse<int8_t, int16_t> ( const void * src, void * dest, int64_t srcByteCount, int64_t destByteSize ) noexcept
 {
+	static const __m128  i8_to_f32_converter = _mm_set1_ps ( ( float ) __TC_INV_CHAR );
+	static const __m128  f32_to_i16_converter = _mm_set1_ps ( ( float ) __TC_SHORT );
+	static const __m128i zero_int = _mm_setzero_si128 ();
+
 	if ( srcByteCount * 2 > destByteSize )
 		return false;
 
@@ -312,36 +317,61 @@ template<> static inline bool __TC_sample_convert_sse<float, int32_t> ( const vo
 	int loopCount = srcByteCount / 4 * 4;
 	for ( int i = 0; i < loopCount; i += 4 )
 	{
-		__m128i loaded = _mm_cvtepi8_epi32 ( _mm_loadl_epi64 ( ( __m128i* ) ( srcBuffer + i ) ) );
-		__m128 conv = __TC_convert ( loaded, __g_TC_int8_to_float_converter );
-		loaded = __TC_convert ( conv, __g_TC_float_to_int16_converter );
-		_mm_storel_epi64 ( ( __m128i* ) ( destBuffer + 4 ), _mm_cvtepi32_epi16 ( loaded ) );
+		__m128i loaded = __TC_convert ( __TC_convert ( _mm_cvtepi8_epi32 ( _mm_loadl_epi64 ( ( __m128i* ) ( srcBuffer + i ) ) ), i8_to_f32_converter ), f32_to_i16_converter );
+		_mm_storel_epi64 ( ( __m128i* ) ( destBuffer + i ), _mm_packs_epi32 ( loaded, zero_int ) );
 	}
 	for ( int i = loopCount; i < srcByteCount; ++i )
 		destBuffer [ i ] = __TC_convert<int8_t, int16_t> ( srcBuffer [ i ] );
 
 	return true;
 }
-static inline bool __TC_sample_convert_sse_i8_i32 ( const void * src, void * dest, int64_t srcByteCount, int64_t destByteSize ) noexcept
+template<> static inline bool __TC_sample_convert_sse<int8_t, int24_t> ( const void * src, void * dest, int64_t srcByteCount, int64_t destByteSize ) noexcept
 {
+	static const __m128  i8_to_f32_converter = _mm_set1_ps ( ( float ) __TC_INV_CHAR );
+	static const __m128  f32_to_i24_converter = _mm_set1_ps ( ( float ) __TC_24BIT );
+	static const __m128i i32_to_i24_shuffle = _mm_set_epi8 ( -1, -1, -1, -1, 14, 13, 12, 10, 9, 8, 6, 5, 4, 2, 1, 0 );
+
+	if ( srcByteCount * 3 > destByteSize )
+		return false;
+
+	int8_t arr [ 16 ];
+
+	int8_t * srcBuffer = ( int8_t * ) src;
+	int24_t * destBuffer = ( int24_t * ) dest;
+	int64_t loopCount = srcByteCount / 4 * 4;
+	for ( int i = 0; i < loopCount; i += 4 )
+	{
+		__m128i loaded = __TC_convert ( __TC_convert ( _mm_cvtepi8_epi32 ( _mm_loadl_epi64 ( ( __m128i* ) ( srcBuffer + i ) ) ), i8_to_f32_converter ), f32_to_i24_converter );
+		loaded = _mm_shuffle_epi8 ( loaded, i32_to_i24_shuffle );
+		_mm_store_si128 ( ( __m128i* ) arr, loaded );
+		memcpy ( destBuffer + i, arr, 12 );
+	}
+	for ( int i = loopCount; i < srcByteCount; ++i )
+		destBuffer [ i ] = __TC_convert<int8_t, int32_t> ( srcBuffer [ i ] );
+
+	return true;
+}
+template<> static inline bool __TC_sample_convert_sse<int8_t, int32_t> ( const void * src, void * dest, int64_t srcByteCount, int64_t destByteSize ) noexcept
+{
+	static const __m128  i8_to_f32_converter = _mm_set1_ps ( ( float ) __TC_INV_CHAR );
+	static const __m128  f32_to_i32_converter = _mm_set1_ps ( ( float ) __TC_INT );
+
 	if ( srcByteCount * 4 > destByteSize )
 		return false;
 
 	int8_t * srcBuffer = ( int8_t * ) src;
 	int32_t * destBuffer = ( int32_t * ) dest;
-	int loopCount = srcByteCount / 4 * 4;
+	int64_t loopCount = srcByteCount / 4 * 4;
 	for ( int i = 0; i < loopCount; i += 4 )
 	{
-		__m128i loaded = _mm_cvtepi8_epi32 ( _mm_loadl_epi64 ( ( __m128i* ) ( srcBuffer + i ) ) );
-		__m128 conv = __TC_convert ( loaded, __g_TC_int8_to_float_converter );
-		loaded = __TC_convert ( conv, __g_TC_float_to_int32_converter );
+		__m128i loaded = __TC_convert ( __TC_convert ( _mm_cvtepi8_epi32 ( _mm_loadl_epi64 ( ( __m128i* ) ( srcBuffer + i ) ) ), i8_to_f32_converter ), f32_to_i32_converter );
 		_mm_store_si128 ( ( __m128i* ) ( destBuffer + 4 ), loaded );
 	}
 	for ( int i = loopCount; i < srcByteCount; ++i )
-		destBuffer [ i ] = ( int32_t ) ( ( ( int32_t ) srcBuffer [ i ] ) * 16777216 );
+		destBuffer [ i ] = __TC_convert<int8_t, int32_t> ( srcBuffer [ i ] );
 
 	return true;
-}*/
+}
 template<> static inline bool __TC_sample_convert_sse<int8_t, float> ( const void * src, void * dest, int64_t srcByteCount, int64_t destByteSize ) noexcept
 {
 	static const __m128  i8_to_f32_converter = _mm_set1_ps ( ( float ) __TC_INV_CHAR );
@@ -566,9 +596,9 @@ static const __TC_SAMPLE_CONVERTERS __g_TC_sse_converters = {
 	__TC_sample_convert_sse<float, int32_t>,
 
 	__TC_sample_convert_sse<int8_t, float>,
-	__TC_sample_convert<int8_t, int16_t>,
-	__TC_sample_convert<int8_t, int24_t>,
-	__TC_sample_convert<int8_t, int32_t>,
+	__TC_sample_convert_sse<int8_t, int16_t>,
+	__TC_sample_convert_sse<int8_t, int24_t>,
+	__TC_sample_convert_sse<int8_t, int32_t>,
 
 	__TC_sample_convert_sse<int16_t, float>,
 	__TC_sample_convert_sse<int16_t, int8_t>,
