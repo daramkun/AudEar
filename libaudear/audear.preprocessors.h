@@ -21,16 +21,12 @@
 #		define AE_PLATFORM_WINDOWS							WINAPI_FAMILY_PARTITION ( WINAPI_PARTITION_DESKTOP ) || !defined ( WINAPI_FAMILY_DESKTOP_APP )
 #		define AE_PLATFORM_UWP								WINAPI_FAMILY_PARTITION ( WINAPI_FAMILY_PC_APP )
 #	else
-// Microsoft Windows NT
 #		define AE_PLATFORM_WINDOWS							0
-// Microsoft Windows RT(Windows 8(.1) Apps and UWP)
 #		define AE_PLATFORM_UWP								0
 #	endif
 #	if defined ( __APPLE__ )
 #		include <TargetConditionals.h>
-// Apple macOS
 #		define AE_PLATFORM_MACOS							TARGET_OS_MAC && !( TARGET_OS_IOS || TARGET_OS_SIMULATOR )
-// Apple iOS
 #		define AE_PLATFORM_IOS								TARGET_OS_IOS || TARGET_OS_SIMULATOR
 #		import <Foundation/Foundation.h>
 #		include <sys/time.h>
@@ -38,20 +34,13 @@
 #		define AE_PLATFORM_MACOS							0
 #		define AE_PLATFORM_IOS								0
 #	endif
-// Google Android
 #	define AE_PLATFORM_ANDROID								defined ( __ANDROID__ )
-// UNIX and Linux without Android
 #	define AE_PLATFORM_UNIX									( defined ( __unix__ ) || defined ( __linux__ ) ) && !defined ( __ANDROID__ )
 
-// Intel x86 Architecture
 #	define AE_ARCH_IA32										defined ( _M_IX86 ) || defined ( __i386__ )
-// AMD x64 Architecture
 #	define AE_ARCH_AMD64									defined ( _M_AMD64 ) || defined ( __amd64__ )
-// ARM Architecture
 #	define AE_ARCH_ARM										defined ( _M_ARM ) || defined ( __arm__ )
-// ARM64 Architecture
 #	define AE_ARCH_ARM64									defined ( __aarch64__ )
-// Unknown Architecture
 #	define AE_ARCH_UNKNOWN									!( AE_ARCH_IA32 || AE_ARCH_AMD64 || AE_ARCH_ARM || AE_ARCH_ARM64 )
 
 #	if AE_PLATFORM_WINDOWS
