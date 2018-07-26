@@ -96,13 +96,13 @@ public:
 				}
 				complexBuffer [ i / _wf.channels ] = std::complex<double> ( value / avg, 0 );
 			}
-			__fft ( &complexBuffer [ 0 ], ret / 4, false );
+			__fft ( &complexBuffer [ 0 ], ( int ) ret / 4, false );
 
 			std::shared_ptr<float [] > complexValueBuffer ( new float [ ret / 4 ] );
 			for ( int i = 0; i < ret / 4; ++i )
 				complexValueBuffer [ i ] = ( float ) sqrt ( pow ( complexBuffer [ i ].real (), 2 ) + pow ( complexBuffer [ i ].imag (), 2 ) );
 
-			_callback ( _ch, &complexValueBuffer [ 0 ], ret / 4 );
+			_callback ( _ch, &complexValueBuffer [ 0 ], ( int ) ret / 4 );
 		}
 
 		return ret;
@@ -202,7 +202,7 @@ public:
 				}
 				dbBuffer [ i / _wf.channels ] = 20 * log10 ( abs ( value / avg ) );
 			}
-			_callback ( _ch, &dbBuffer [ 0 ], ret / 4 );
+			_callback ( _ch, &dbBuffer [ 0 ], ( int ) ret / 4 );
 		}
 
 		return ret;

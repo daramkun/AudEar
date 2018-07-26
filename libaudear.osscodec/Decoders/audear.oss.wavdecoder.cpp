@@ -125,7 +125,7 @@ public:
 	{
 		std::shared_ptr<int8_t []> buffer ( new int8_t [ byterate ] );
 		AETIMESPAN current = AETIMESPAN_initializeWithByteCount ( file->dataChunkDataSize - file->bytesRemaining, byterate );
-		long result;
+		drwav_uint64 result;
 		if ( file->bitsPerSample == 32 )
 			result = drwav_read_s32 ( file, byterate / 4, ( drwav_int32 * ) &buffer [ 0 ] );
 		else if ( file->bitsPerSample == 16 )
