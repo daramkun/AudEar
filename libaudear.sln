@@ -29,6 +29,11 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "libaudear.osscodec", "libau
 	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "libaudear.typeconvtest", "libaudear.typeconvtest\libaudear.typeconvtest.vcxproj", "{6267254F-86FC-4D5F-9AA6-198486956FFD}"
+	ProjectSection(ProjectDependencies) = postProject
+		{86E53F65-C3A5-4716-A2C1-CC934A4546C7} = {86E53F65-C3A5-4716-A2C1-CC934A4546C7}
+		{723BF1AC-E90E-4585-82FF-CBB895E2E951} = {723BF1AC-E90E-4585-82FF-CBB895E2E951}
+		{8ECA67E6-0194-4278-BD13-22090BEA3439} = {8ECA67E6-0194-4278-BD13-22090BEA3439}
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

@@ -24,6 +24,61 @@
 #define SAMPLE_SOURCE_TYPE									int16_t
 #define SAMPLE_DESTINATION_TYPE								float
 
+void __check_valid ( const __TC_SAMPLE_CONVERTERS & converters, const SAMPLE_SOURCE_TYPE * source1, SAMPLE_SOURCE_TYPE * source2, SAMPLE_DESTINATION_TYPE * destination )
+{
+	using namespace std;
+
+	printf ( "Valid: " );
+
+	if ( !converters.get_converter<SAMPLE_SOURCE_TYPE, SAMPLE_DESTINATION_TYPE> () (
+		source1, destination,
+		SAMPLE_SIZE * SAMPLE_CHANNELS * sizeof ( SAMPLE_SOURCE_TYPE ),
+		SAMPLE_SIZE * SAMPLE_CHANNELS * sizeof ( SAMPLE_DESTINATION_TYPE ) ) )
+	{
+		printf ( "F(Faild call S->D)\n" );
+		return;
+	}
+
+	if ( !converters.get_converter<SAMPLE_DESTINATION_TYPE, SAMPLE_SOURCE_TYPE> () (
+		destination, source2,
+		SAMPLE_SIZE * SAMPLE_CHANNELS * sizeof ( SAMPLE_DESTINATION_TYPE ),
+		SAMPLE_SIZE * SAMPLE_CHANNELS * sizeof ( SAMPLE_SOURCE_TYPE ) ) )
+	{
+		printf ( "F(Faild call D->S)\n" );
+		return;
+	}
+
+	for ( int i = 0; i < SAMPLE_SIZE * SAMPLE_CHANNELS; ++i )
+	{
+		if ( source1 [ i ] != source2 [ i ] )
+		{
+			bool diff = false;
+			if ( std::is_same<SAMPLE_SOURCE_TYPE, float>::value )
+			{
+				if ( ( source1 [ i ] - source2 [ i ] ) > FLT_EPSILON )
+					diff = true;
+			}
+			else
+			{
+				int sm = pow ( 2, sizeof ( SAMPLE_SOURCE_TYPE ) * 8 - 1 ) - 1;
+				int dm = pow ( 2, sizeof ( SAMPLE_DESTINATION_TYPE ) * 8 - 1 ) - 1;
+				if ( abs ( source1 [ i ] - source2 [ i ] ) > ( max ( sm, dm ) / min ( sm, dm ) ) )
+					diff = true;
+			}
+
+			if ( diff )
+			{
+				printf ( "F(%f to %f, Diff: %f)\n",
+					( float ) source1 [ i ], ( float ) source2 [ i ],
+					( float ) ( source1 [ i ] - source2 [ i ] ) );
+				return;
+			}
+		}
+	}
+
+	printf ( "T\n" );
+}
+
 void __measure ( const __TC_SAMPLE_CONVERTERS & converters )
 {
 	static int64_t freq = __HRT_GetFrequency ();
@@ -57,12 +112,22 @@ int main ( void )
 	printf ( "Sample information: %dch, %dHz\n", SAMPLE_CHANNELS, SAMPLE_SIZE );
 	printf ( "Bits per Sample: source - %d, destination - %d\n", ( int ) sizeof ( SAMPLE_SOURCE_TYPE ) * 8, ( int ) sizeof ( SAMPLE_DESTINATION_TYPE ) * 8 );
 
-	__TypeConverterFunction converter = __g_TC_plain_converters.get_converter<SAMPLE_SOURCE_TYPE, SAMPLE_DESTINATION_TYPE> ();
+	std::shared_ptr<SAMPLE_SOURCE_TYPE []> source1 ( new SAMPLE_SOURCE_TYPE [ SAMPLE_SIZE * SAMPLE_CHANNELS ] );
+	std::shared_ptr<SAMPLE_DESTINATION_TYPE []> destination ( new SAMPLE_DESTINATION_TYPE [ SAMPLE_SIZE * SAMPLE_CHANNELS ] );
+	std::shared_ptr<SAMPLE_SOURCE_TYPE []> source2 ( new SAMPLE_SOURCE_TYPE [ SAMPLE_SIZE * SAMPLE_CHANNELS ] );
+
+	if ( std::is_same<SAMPLE_SOURCE_TYPE, float>::value )
+	{
+		for ( int i = 0; i < SAMPLE_SIZE * SAMPLE_CHANNELS; ++i )
+			source1 [ i ] = rand () / ( float ) INT_MAX;
+	}
 
 	printf ( "\n== Plain C++ Code ==\n" );
+	__check_valid ( __g_TC_plain_converters, &source1 [ 0 ], &source2 [ 0 ], &destination [ 0 ] );
 	__measure ( __g_TC_plain_converters );
 
 	printf ( "\n== SIMD Code ==\n" );
+	__check_valid ( __g_TC_sse_converters, &source1 [ 0 ], &source2 [ 0 ], &destination [ 0 ] );
 	__measure ( __g_TC_sse_converters );
 
 	return 0;
