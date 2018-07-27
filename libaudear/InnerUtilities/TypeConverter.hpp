@@ -208,6 +208,9 @@ static inline bool __TC_sample_convert_sse ( const void * src, void * dest, int6
 	return false;
 }
 
+////////////////////////////////////////////////////////////
+// float to
+////////////////////////////////////////////////////////////
 template<> static inline bool __TC_sample_convert_sse<float, int8_t> ( const void * src, void * dest, int64_t srcByteCount, int64_t destByteSize ) noexcept
 {
 	static const __m128 f32_to_i8_converter = _mm_set1_ps ( ( float ) __TC_CHAR );
@@ -304,6 +307,10 @@ template<> static inline bool __TC_sample_convert_sse<float, int32_t> ( const vo
 
 	return true;
 }
+
+////////////////////////////////////////////////////////////
+// 8-bit to
+////////////////////////////////////////////////////////////
 template<> static inline bool __TC_sample_convert_sse<int8_t, int16_t> ( const void * src, void * dest, int64_t srcByteCount, int64_t destByteSize ) noexcept
 {
 	static const __m128i zero_int = _mm_setzero_si128 ();
@@ -386,6 +393,9 @@ template<> static inline bool __TC_sample_convert_sse<int8_t, float> ( const voi
 	return true;
 }
 
+////////////////////////////////////////////////////////////
+// 16-bit to
+////////////////////////////////////////////////////////////
 template<> static inline bool __TC_sample_convert_sse<int16_t, int8_t> ( const void * src, void * dest, int64_t srcByteCount, int64_t destByteSize ) noexcept
 {
 	static const __m128i i16_to_i8_shuffle = _mm_set_epi8 ( -1, -1, -1, -1, -1, -1, -1, -1, 28, 24, 20, 16, 12, 8, 4, 0 );
@@ -476,6 +486,40 @@ template<> static inline bool __TC_sample_convert_sse<int16_t, float> ( const vo
 	return true;
 }
 
+////////////////////////////////////////////////////////////
+// 24-bit to
+////////////////////////////////////////////////////////////
+template<> static inline bool __TC_sample_convert_sse<int24_t, float> ( const void * src, void * dest, int64_t srcByteCount, int64_t destByteSize ) noexcept
+{
+	static const __m128  i24_to_f32_converter = _mm_set1_ps ( ( float ) __TC_INV_24BIT );
+	static const __m128i i24_to_i32_shuffle = _mm_set_epi8 ( -1, 11, 10, 9, -1, 8, 7, 6, -1, 5, 4, 3, -1, 2, 1, 0 );
+	static const __m128i i24_to_i32_negate_shuffle = _mm_set_epi8 ( 14, -1, -1, -1, 10, -1, -1, -1, 6, -1, -1, -1, 2, -1, -1, -1 );
+	static const __m128i i24_to_i32_and = _mm_set1_epi32 ( ( int ) 0x80000000 );
+
+	if ( srcByteCount * 4 > destByteSize * 3 )
+		return false;
+
+	int24_t * srcBuffer = ( int24_t * ) src;
+	float * destBuffer = ( float * ) dest;
+	int64_t loopCount = srcByteCount / 3;
+	int64_t SIMDLoopCount = loopCount / 4 * 4;
+	for ( int64_t i = 0; i < SIMDLoopCount; i += 4 )
+	{
+		__m128i loaded = _mm_shuffle_epi8 ( _mm_load_si128 ( ( const __m128i * ) &srcBuffer [ i ] ), i24_to_i32_shuffle );
+		__m128i negate = _mm_srai_epi32 ( _mm_and_si128 ( _mm_shuffle_epi8 ( loaded, i24_to_i32_negate_shuffle ), i24_to_i32_and ), 7 );
+		loaded = _mm_or_si128 ( loaded, negate );
+		__m128 conved = __TC_convert ( loaded, i24_to_f32_converter );
+		_mm_store_ps ( destBuffer + i, conved );
+	}
+	for ( int64_t i = SIMDLoopCount; i < loopCount; ++i )
+		destBuffer [ i ] = __TC_convert<int24_t, float> ( srcBuffer [ i ] );
+
+	return true;
+}
+
+////////////////////////////////////////////////////////////
+// 32-bit to
+////////////////////////////////////////////////////////////
 template<> static inline bool __TC_sample_convert_sse<int32_t, int8_t> ( const void * src, void * dest, int64_t srcByteCount, int64_t destByteSize ) noexcept
 {
 	static const __m128i i32_to_i8_shuffle = _mm_set_epi8 ( -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 12, 8, 4, 0 );
@@ -584,7 +628,7 @@ static const __TC_SAMPLE_CONVERTERS __g_TC_sse_converters = {
 	__TC_sample_convert_sse<int16_t, int24_t>,
 	__TC_sample_convert_sse<int16_t, int32_t>,
 
-	__TC_sample_convert<int24_t, float>,
+	__TC_sample_convert_sse<int24_t, float>,
 	__TC_sample_convert<int24_t, int8_t>,
 	__TC_sample_convert<int24_t, int16_t>,
 	__TC_sample_convert<int24_t, int32_t>,
