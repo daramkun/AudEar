@@ -5,7 +5,7 @@
 #include <memory>
 #include <cmath>
 
-#if ( AE_ARCH_IA32 || AE_ARCH_AMD64 ) && USE_SIMD
+#if /*( AE_ARCH_IA32 || AE_ARCH_AMD64 ) && USE_SIMD/**/0
 #	define AE_CONV											__g_TC_sse_converters
 #else
 #	define AE_CONV											__g_TC_plain_converters
@@ -54,7 +54,7 @@ public:
 	int64_t read ( uint8_t * buffer, int64_t len ) noexcept
 	{
 		int64_t readLen = len / 4 * ( _wf.bitsPerSample / 8 );
-		std::shared_ptr<uint8_t []> readBuffer ( new uint8_t [ readLen ] );
+		AEAUDIOBUFFER<uint8_t> readBuffer ( readLen );
 		int64_t ret = _stream->read ( _stream->object, &readBuffer [ 0 ], readLen );
 		if ( ret == 0 ) return 0;
 
@@ -153,7 +153,7 @@ public:
 	int64_t read ( uint8_t * buffer, int64_t len ) noexcept
 	{
 		int64_t readLen = len / ( _bps / 8 ) * 4;
-		std::shared_ptr<float []> tempBuffer ( new float [ readLen / 4 ] );
+		AEAUDIOBUFFER<float> tempBuffer ( readLen / 4 );
 		int64_t ret = _stream->read ( _stream->object, ( uint8_t* ) &tempBuffer [ 0 ], readLen );
 		if ( ret == 0 )
 			return 0;
@@ -283,7 +283,7 @@ public:
 	int64_t read ( uint8_t * buffer, int64_t len ) noexcept
 	{
 		int64_t readLen = len / ( _bps / 8 ) * ( _wf.bitsPerSample / 8 );
-		std::shared_ptr<uint8_t []> tempBuffer ( new uint8_t [ readLen ] );
+		AEAUDIOBUFFER<uint8_t> tempBuffer ( readLen );
 		int64_t ret = _stream->read ( _stream->object, &tempBuffer [ 0 ], readLen );
 		if ( ret == 0 )
 			return 0;

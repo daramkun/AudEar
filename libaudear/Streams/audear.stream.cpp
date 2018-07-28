@@ -18,7 +18,7 @@ error_t AE_createFileStream ( const char * filename, AESTREAM ** ret )
 	stream->tag = "AudEar File Stream";
 	stream->read = [] ( void * obj, uint8_t * buffer, int64_t len ) -> int64_t
 	{
-		return fread ( buffer, 1, len, ( FILE* ) obj );
+		return fread ( buffer, 1, ( size_t ) len, ( FILE* ) obj );
 	};
 	stream->seek = [] ( void * obj, int64_t offset, AESEEKORIGIN origin ) -> int64_t
 	{

@@ -101,7 +101,7 @@ public:
 
 private:
 #if AE_PLATFORM_WINDOWS || AE_PLATFORM_UWP
-	static DWORD ThreadStart ( void * ptr )
+	static DWORD CALLBACK ThreadStart ( LPVOID ptr )
 #else
 	static void * ThreadStart ( void * ptr )
 #endif

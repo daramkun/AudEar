@@ -152,7 +152,7 @@ public:
 
 		_length = ( int64_t ) ( AETIMESPAN_totalSeconds ( duration ) * _format.bytesPerSec );
 
-		_buffer = std::shared_ptr<int8_t []> ( new int8_t [ _length ] );
+		_buffer = AEAUDIOBUFFER<int8_t> ( _length );
 		int64_t offset = 0;
 
 		AEAUDIOSAMPLE * sample;
@@ -164,7 +164,7 @@ public:
 			{
 				if ( offset + sampleLength < _length )
 				{
-					memcpy ( &_buffer [ offset ], sampleBuffer, sampleLength );
+					memcpy ( &_buffer [ offset ], sampleBuffer, ( size_t ) sampleLength );
 					offset += sampleLength;
 				}
 				else
@@ -189,7 +189,7 @@ public:
 	int64_t read ( uint8_t * buffer, int64_t len ) noexcept
 	{
 		auto retValue = ( _length < _position + len ) ? _length - _position : len;
-		memcpy ( buffer, &_buffer [ 0 ] + _position, retValue );
+		memcpy ( buffer, &_buffer [ 0 ] + _position, ( size_t ) retValue );
 		_position += retValue;
 		return retValue;
 	}
@@ -221,7 +221,7 @@ public:
 	int64_t length () noexcept { return _length; }
 
 private:
-	std::shared_ptr<int8_t []> _buffer;
+	AEAUDIOBUFFER<int8_t> _buffer;
 	AEWAVEFORMAT _format;
 	int64_t _position;
 	int64_t _length;

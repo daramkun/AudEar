@@ -10,15 +10,8 @@ public:
 	inline __MemoryStream ()
 		: _maxLength ( 48000 * 2 * 2 ), _length ( 0 )
 	{
-		_buffer = new uint8_t [ _maxLength ];
-		_tempBuffer = new uint8_t [ _maxLength ];
-	}
-	inline ~__MemoryStream ()
-	{
-		delete [] _tempBuffer;
-		delete [] _buffer;
-		_tempBuffer = nullptr;
-		_buffer = nullptr;
+		_buffer.resize ( _maxLength );
+		_tempBuffer.resize ( _maxLength );
 	}
 
 public:
@@ -26,12 +19,10 @@ public:
 	{
 		if ( length > _length )
 			length = _length;
-		memcpy ( buffer, _buffer, length );
-		memcpy ( _tempBuffer, _buffer + length, _length - length );
+		memcpy ( buffer, _buffer, ( size_t ) length );
+		memcpy ( _tempBuffer, _buffer + length, ( size_t ) _length - length );
 
-		uint8_t * temp = _buffer;
-		_buffer = _tempBuffer;
-		_tempBuffer = temp;
+		_buffer.swap ( _tempBuffer );
 
 		_length -= length;
 		return length;
@@ -40,7 +31,7 @@ public:
 	{
 		int64_t tempLength = _length;
 		setLength ( _length + length );
-		memcpy ( _buffer + tempLength, data, length );
+		memcpy ( _buffer + tempLength, data, ( size_t ) length );
 	}
 
 public:
@@ -50,21 +41,16 @@ public:
 	{
 		if ( _maxLength < len )
 		{
-			uint8_t * temp = _buffer;
 			int64_t tempLength = _length;
 			_maxLength = ( len + 24 ) / 8 * 8;
-			_buffer = new uint8_t [ _maxLength ];
-			memcpy ( _buffer, temp, tempLength );
-			delete [] temp;
-
-			delete [] _tempBuffer;
-			_tempBuffer = new uint8_t [ _maxLength ];
+			_buffer.resizeAndCopy ( _maxLength );
+			_tempBuffer.resize ( _maxLength );
 		}
 		_length = len;
 	}
 
 private:
-	uint8_t * _buffer, *_tempBuffer;
+	AEAUDIOBUFFER<uint8_t> _buffer, _tempBuffer;
 	int64_t _length, _maxLength;
 };
 

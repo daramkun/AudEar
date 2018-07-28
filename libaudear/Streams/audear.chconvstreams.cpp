@@ -31,7 +31,7 @@ public:
 	{
 		int64_t readLen = len * _wf.channels;
 
-		std::shared_ptr<float []> tempBuffer ( new float [ readLen / 4 ] );
+		AEAUDIOBUFFER<float> tempBuffer ( readLen / 4 );
 		int64_t ret = _stream->read ( _stream->object, ( uint8_t* ) &tempBuffer [ 0 ], readLen );
 		if ( ret == 0 )
 			return 0;
@@ -133,7 +133,7 @@ public:
 	{
 		int64_t readLen = len / 2;
 
-		std::shared_ptr<float []> tempBuffer ( new float [ readLen / 4 ] );
+		AEAUDIOBUFFER<float> tempBuffer ( readLen / 4 );
 		int64_t ret = _stream->read ( _stream->object, ( uint8_t* ) &tempBuffer [ 0 ], readLen );
 		if ( ret == 0 )
 			return 0;

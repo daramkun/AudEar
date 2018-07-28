@@ -2,6 +2,7 @@
 #define __AUDEAR_STRUCT_H__
 
 #include <stdint.h>
+#include <malloc.h>
 
 typedef enum
 {
@@ -128,5 +129,69 @@ INLINE int64_t AETIMESPAN_getBytesCount ( AETIMESPAN timeSpan, int byterate )
 {
 	return ( int64_t ) ( AETIMESPAN_totalSeconds ( timeSpan ) * byterate );
 }
+
+#ifdef __cplusplus
+extern "C++"
+{
+	template<typename T>
+	struct AEAUDIOBUFFER
+	{
+	private:
+		T * buffer;
+		int64_t size;
+
+	public:
+		inline AEAUDIOBUFFER () { buffer = nullptr; }
+		inline AEAUDIOBUFFER ( int64_t size )
+			: size ( size )
+		{
+			buffer = ( T* ) _mm_malloc ( ( size_t ) size * sizeof ( T ), 16 );
+		}
+		inline ~AEAUDIOBUFFER ()
+		{
+			if ( buffer )
+				_mm_free ( buffer );
+			buffer = nullptr;
+		}
+
+	public:
+		inline operator T* ( ) noexcept { return buffer; }
+		template<typename T2>
+		inline operator T2* ( ) noexcept { return ( T2* ) buffer; }
+
+	public:
+		inline void resize ( int64_t size )
+		{
+			if ( buffer ) _mm_free ( buffer );
+			buffer = ( T* ) _mm_malloc ( ( size_t ) size * sizeof ( T ), 16 );
+			this->size = size;
+		}
+		inline void resizeAndCopy ( int64_t size )
+		{
+			T * temp = buffer;
+			buffer = ( T* ) _mm_malloc ( ( size_t ) size * sizeof ( T ), 16 );
+			if ( temp )
+			{
+				memcpy ( buffer, temp, ( size_t ) min ( this->size, size ) );
+				_mm_free ( temp );
+			}
+			this->size = size;
+		}
+
+	public:
+		inline void swap ( AEAUDIOBUFFER<T> & buffer )
+		{
+			T * bufferBuffer = buffer.buffer;
+			int64_t bufferSize = buffer.size;
+
+			buffer.buffer = this->buffer;
+			buffer.size = size;
+
+			this->buffer = bufferBuffer;
+			size = bufferSize;
+		}
+	};
+}
+#endif
 
 #endif
