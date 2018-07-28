@@ -1,4 +1,5 @@
 #include "../libaudear/audear.preprocessors.h"
+#include "../libaudear/audear.struct.h"
 #include "../libaudear/InnerUtilities/TypeConverter.hpp"
 #include "../libaudear/InnerUtilities/HighResolutionTimer.hpp"
 
@@ -21,8 +22,8 @@
 
 #define SAMPLE_CHANNELS										2
 #define SAMPLE_SIZE											48000
-#define SAMPLE_SOURCE_TYPE									int16_t
-#define SAMPLE_DESTINATION_TYPE								float
+#define SAMPLE_SOURCE_TYPE									int24_t
+#define SAMPLE_DESTINATION_TYPE								int8_t
 
 void __check_valid ( const __TC_SAMPLE_CONVERTERS & converters, const SAMPLE_SOURCE_TYPE * source1, SAMPLE_SOURCE_TYPE * source2, SAMPLE_DESTINATION_TYPE * destination )
 {
@@ -112,9 +113,9 @@ int main ( void )
 	printf ( "Sample information: %dch, %dHz\n", SAMPLE_CHANNELS, SAMPLE_SIZE );
 	printf ( "Bits per Sample: source - %d, destination - %d\n", ( int ) sizeof ( SAMPLE_SOURCE_TYPE ) * 8, ( int ) sizeof ( SAMPLE_DESTINATION_TYPE ) * 8 );
 
-	std::shared_ptr<SAMPLE_SOURCE_TYPE []> source1 ( new SAMPLE_SOURCE_TYPE [ SAMPLE_SIZE * SAMPLE_CHANNELS ] );
-	std::shared_ptr<SAMPLE_DESTINATION_TYPE []> destination ( new SAMPLE_DESTINATION_TYPE [ SAMPLE_SIZE * SAMPLE_CHANNELS ] );
-	std::shared_ptr<SAMPLE_SOURCE_TYPE []> source2 ( new SAMPLE_SOURCE_TYPE [ SAMPLE_SIZE * SAMPLE_CHANNELS ] );
+	AEAUDIOBUFFER<SAMPLE_SOURCE_TYPE> source1 ( SAMPLE_SIZE * SAMPLE_CHANNELS );
+	AEAUDIOBUFFER<SAMPLE_DESTINATION_TYPE> destination ( SAMPLE_SIZE * SAMPLE_CHANNELS );
+	AEAUDIOBUFFER<SAMPLE_SOURCE_TYPE> source2 ( SAMPLE_SIZE * SAMPLE_CHANNELS );
 
 	if ( std::is_same<SAMPLE_SOURCE_TYPE, float>::value )
 	{
@@ -123,11 +124,11 @@ int main ( void )
 	}
 
 	printf ( "\n== Plain C++ Code ==\n" );
-	__check_valid ( __g_TC_plain_converters, &source1 [ 0 ], &source2 [ 0 ], &destination [ 0 ] );
+	__check_valid ( __g_TC_plain_converters, source1, source2, destination );
 	__measure ( __g_TC_plain_converters );
 
 	printf ( "\n== SIMD Code ==\n" );
-	__check_valid ( __g_TC_sse_converters, &source1 [ 0 ], &source2 [ 0 ], &destination [ 0 ] );
+	__check_valid ( __g_TC_sse_converters, source1, source2, destination );
 	__measure ( __g_TC_sse_converters );
 
 	return 0;
