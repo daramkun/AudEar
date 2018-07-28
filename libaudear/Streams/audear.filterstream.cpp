@@ -1,7 +1,4 @@
-#include <audear.h>
-#include "audear.filter.h"
-
-#pragma comment ( lib, "libaudear.lib" )
+#include "../audear.h"
 
 #include <memory>
 #include <cmath>
@@ -80,7 +77,7 @@ private:
 	bool collectionConst;
 };
 
-EXTC AEFEXP error_t AE_createFilterAudioStream ( AEAUDIOSTREAM * stream, AEFILTERCOLLECTION * collection, bool collectionConst, AEAUDIOSTREAM ** ret )
+error_t AE_createFilterAudioStream ( AEAUDIOSTREAM * stream, AEFILTERCOLLECTION * collection, bool collectionConst, AEAUDIOSTREAM ** ret )
 {
 	if ( stream == nullptr || ret == nullptr ) return AEERROR_ARGUMENT_IS_NULL;
 

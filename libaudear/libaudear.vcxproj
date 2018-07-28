@@ -183,6 +183,8 @@
     <ClCompile Include="Players\audear.xaudio2player.cpp" />
     <ClCompile Include="Streams\audear.audiostream.cpp" />
     <ClCompile Include="Streams\audear.chconvstreams.cpp" />
+    <ClCompile Include="Streams\audear.filterstream.cpp" />
+    <ClCompile Include="Streams\audear.spectrumstream.cpp" />
     <ClCompile Include="Streams\audear.typeconvstreams.cpp" />
     <ClCompile Include="Streams\audear.stream.cpp" />
   </ItemGroup>

@@ -22,4 +22,9 @@ EXTC AEEXP error_t AE_createConverterAudioStream ( AEAUDIOSTREAM * stream, AEAUD
 EXTC AEEXP error_t AE_createMultiChannelsToMonoAudioStream ( AEAUDIOSTREAM * stream, AEAUDIOSTREAM ** ret );
 EXTC AEEXP error_t AE_createMonoToStereoAudioStream ( AEAUDIOSTREAM * stream, AEAUDIOSTREAM ** ret );
 
+EXTC AEEXP error_t AE_createFilterAudioStream ( AEAUDIOSTREAM * stream, AEFILTERCOLLECTION * collection, bool collectionConst, AEAUDIOSTREAM ** ret );
+
+EXTC AEEXP error_t AE_createFrequencySpectrumAudioStream ( AEAUDIOSTREAM * stream, void ( *callback ) ( AESPECTRUMCHANNELS ch, float * freqs, int freqsCount ), AESPECTRUMCHANNELS ch, AEAUDIOSTREAM ** ret );
+EXTC AEEXP error_t AE_createDecibelSpectrumAudioStream ( AEAUDIOSTREAM * stream, void ( *callback ) ( AESPECTRUMCHANNELS ch, float * dbs, int dbsCount ), AESPECTRUMCHANNELS ch, AEAUDIOSTREAM ** ret );
+
 #endif

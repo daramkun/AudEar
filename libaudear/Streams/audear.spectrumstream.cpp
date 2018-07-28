@@ -1,5 +1,5 @@
 #define _USE_MATH_DEFINES
-#include "audear.filter.h"
+#include "../audear.h"
 
 #include <complex>
 #include <cmath>

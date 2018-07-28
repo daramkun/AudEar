@@ -6,6 +6,22 @@
 
 typedef enum
 {
+	AESC_NONE = 0,
+	AESC_CH1 = 1 << 0,
+	AESC_CH2 = 1 << 1,
+	AESC_CH3 = 1 << 2,
+	AESC_CH4 = 1 << 3,
+	AESC_CH5 = 1 << 4,
+	AESC_CH6 = 1 << 5,
+	AESC_CH7 = 1 << 6,
+	AESC_CH8 = 1 << 7,
+	AESC_CH9 = 1 << 8,
+	AESC_CH10 = 1 << 9,
+	AESC_AVGALL = 0xffffffff,
+} AESPECTRUMCHANNELS;
+
+typedef enum
+{
 	AEAF_UNKNOWN,
 	AEAF_PCM,
 	AEAF_IEEE_FLOAT,
@@ -129,6 +145,48 @@ INLINE int64_t AETIMESPAN_getBytesCount ( AETIMESPAN timeSpan, int byterate )
 {
 	return ( int64_t ) ( AETIMESPAN_totalSeconds ( timeSpan ) * byterate );
 }
+
+typedef struct AEEXP _AEBIQUADFILTER
+{
+	double a0, a1, a2, a3, a4;
+	double x1 [ 12 ], x2 [ 12 ], y1 [ 12 ], y2 [ 12 ];
+} AEBIQUADFILTER;
+
+EXTC AEEXP float AEBIQUADFILTER_process ( AEBIQUADFILTER * f, float input, int ch );
+
+EXTC AEEXP AEBIQUADFILTER AE_initializeHighPassFilter ( int samplerate, double freq, double q );
+EXTC AEEXP AEBIQUADFILTER AE_initializeHighShelfFilter ( int samplerate, double freq, float shelfSlope, double gaindb );
+EXTC AEEXP AEBIQUADFILTER AE_initializeLowPassFilter ( int samplerate, double freq, double q );
+EXTC AEEXP AEBIQUADFILTER AE_initializeLowShelfFilter ( int samplerate, double freq, float shelfSlope, double gaindb );
+EXTC AEEXP AEBIQUADFILTER AE_initializeAllPassFilter ( int samplerate, double freq, float q );
+EXTC AEEXP AEBIQUADFILTER AE_initializeNotchFilter ( int samplerate, double freq, double q );
+EXTC AEEXP AEBIQUADFILTER AE_initializePeakEqFilter ( int samplerate, double freq, double bandwidth, double peakGainDB );
+EXTC AEEXP AEBIQUADFILTER AE_initializeBandPassFilterCSG ( int samplerate, double freq, double q );
+EXTC AEEXP AEBIQUADFILTER AE_initializeBandPassFilterCPG ( int samplerate, double freq, double q );
+
+typedef struct AEEXP
+{
+	AEBIQUADFILTER filters [ 16 ];
+	int8_t filters_size;
+} AEFILTERCOLLECTION;
+
+typedef enum AEEXP
+{
+	AEEQP_NONE,
+	AEEQP_ACOUSTIC,
+	AEEQP_DANCE,
+	AEEQP_JAZZ,
+	AEEQP_ELECTRONIC,
+	AEEQP_POP,
+	AEEQP_ROCK,
+	AEEQP_HIPHOP,
+	AEEQP_CLASSICAL,
+	AEEQP_PIANO,
+} AEEQUALIZERPRESET;
+
+EXTC AEEXP AEFILTERCOLLECTION AE_initializeSingleItemFilterCollection ( AEBIQUADFILTER filter );
+EXTC AEEXP AEFILTERCOLLECTION AE_initializeEqualizerFilterCollection ( int samplerate, double bandwidth, AEEQUALIZERPRESET preset );
+EXTC AEEXP AEFILTERCOLLECTION AE_initializeEqualizerFilterCollectionWithGainDB ( int samplerate, double bandwidth, double * gainDBs );
 
 #ifdef __cplusplus
 extern "C++"
