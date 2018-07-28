@@ -26,7 +26,7 @@
 #define AL_FORMAT_71CHN16									0x1211
 #define AL_FORMAT_71CHN32									0x1212
 
-#define BUFFER_COUNT										2
+#define BUFFER_COUNT										3
 
 #include <vector>
 #include <memory>
@@ -71,7 +71,7 @@ public:
 		if ( _state == AEPS_PLAYING ) return AEERROR_NOERROR;
 		if ( _sourceId == 0 ) return AEERROR_INVALID_CALL;
 
-		for ( int i = 0; i < 4; ++i )
+		for ( int i = 0; i < BUFFER_COUNT; ++i )
 		{
 			ALuint bufferId;
 			alGenBuffers ( 1, &bufferId );
@@ -290,8 +290,8 @@ public:
 private:
 	bool buffering ( ALuint bufferId, int actualSize )
 	{
-		std::shared_ptr<BYTE []> readBuffer ( new BYTE [ actualSize ] );
-		int64_t readed = _sourceStream->read ( _sourceStream->object, &readBuffer [ 0 ], actualSize );
+		AEAUDIOBUFFER<uint8_t> readBuffer ( actualSize );
+		int64_t readed = _sourceStream->read ( _sourceStream->object, readBuffer, actualSize );
 		if ( readed == 0 )
 		{
 			return false;

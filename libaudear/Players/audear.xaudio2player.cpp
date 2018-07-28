@@ -179,7 +179,7 @@ public:
 
 		HRESULT hr;
 
-		BYTE readBuffer [ 524288 ];
+		AEAUDIOBUFFER<uint8_t> readBuffer ( _wf.bytesPerSec / 100 );
 		int64_t readed = _sourceStream->read ( _sourceStream->object, &readBuffer [ 0 ], _wf.bytesPerSec / 100 );
 		if ( readed == 0 )
 		{

@@ -194,7 +194,7 @@ public:
 			if ( availableFrames <= 10 )
 				continue;
 
-			std::shared_ptr<BYTE []> readBuffer ( new BYTE [ actualSize ] );
+			AEAUDIOBUFFER<uint8_t> readBuffer ( actualSize );
 			int64_t readed = _sourceStream->read ( _sourceStream->object, &readBuffer [ 0 ], actualSize );
 			if ( readed == 0 )
 			{
@@ -216,7 +216,7 @@ public:
 			if ( FAILED ( _audioRenderClient->GetBuffer ( availableFrames, &data ) ) )
 				continue;
 
-			memcpy ( data, &readBuffer [ 0 ], readed );
+			memcpy ( data, &readBuffer [ 0 ], ( size_t ) readed );
 
 			_audioRenderClient->ReleaseBuffer ( ( UINT ) readed / _pwfx->nBlockAlign, 0 );
 
