@@ -88,7 +88,13 @@ public:
 		if ( FAILED ( MFCreateMFByteStreamOnStream ( comStream, &byteStream ) ) )
 			return AEERROR_FAIL;
 
-		if ( FAILED ( MFCreateSourceReaderFromByteStream ( byteStream, nullptr, &_sourceReader ) ) )
+		CComPtr<IMFAttributes> attributes;
+		if ( FAILED ( MFCreateAttributes ( &attributes, 0 ) ) )
+			return AEERROR_FAIL;
+		attributes->SetUINT32 ( MF_LOW_LATENCY, TRUE );
+		//attributes->SetUINT32 ( MF_READWRITE_ENABLE_HARDWARE_TRANSFORMS, TRUE );
+
+		if ( FAILED ( MFCreateSourceReaderFromByteStream ( byteStream, attributes, &_sourceReader ) ) )
 			return AEERROR_FAIL;
 
 		CComPtr<IMFMediaType> readingAudioMediaType;

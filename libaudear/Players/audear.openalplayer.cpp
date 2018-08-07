@@ -122,6 +122,7 @@ public:
 			ALuint buffer = _buffers.front ().bufferId;
 			alSourceUnqueueBuffers ( _sourceId, 1, &buffer );
 			alDeleteBuffers ( 1, &buffer );
+			_buffers.pop ();
 		}
 
 		_sourceStream->seek ( _sourceStream->object, 0, AESO_BEGIN );

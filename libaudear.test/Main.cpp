@@ -54,9 +54,9 @@ int main ( void )
 		return -8;
 
 	AEAutoInterface<AEAUDIOPLAYER> player;
-	//if ( ISERROR ( AE_createWASAPIAudioPlayer ( nullptr, AEWASAPISM_SHARED, &player ) ) )
+	if ( ISERROR ( AE_createWASAPIAudioPlayer ( nullptr, AEWASAPISM_SHARED, &player ) ) )
 	//if ( ISERROR ( AE_createXAudio2AudioPlayer ( 1, &player ) ) )
-	if ( ISERROR ( AE_createOpenALAudioPlayer ( nullptr, &player ) ) )
+	//if ( ISERROR ( AE_createOpenALAudioPlayer ( nullptr, &player ) ) )
 		return -9;
 
 	if ( ISERROR ( player->setSource ( player->object, /*audioStream*/toPCM ) ) )
