@@ -2,10 +2,8 @@
 
 #define USE_OPENAL 1
 #include <audear.h>
-#include <audear.filter.h>
 #include <audear.osscodec.h>
 #pragma comment ( lib, "libaudear.lib" )
-#pragma comment ( lib, "libaudear.filter.lib" )
 #pragma comment ( lib, "libaudear.osscodec.lib" )
 
 #include <cstdio>
@@ -19,7 +17,7 @@ int main ( void )
 	AE_init ();
 	AE_OSS_init ();
 
-	AE_unregisterAudioDecoderCreator ( AE_createMediaFoundationAudioDecoder );
+	//AE_unregisterAudioDecoderCreator ( AE_createMediaFoundationAudioDecoder );
 
 #define FILENAME "./Samples/MP3 Sample with ID3 tag.mp3"
 //#define FILENAME "./Samples/FLAC Sample.flac"
@@ -44,21 +42,21 @@ int main ( void )
 		BANDWIDTH, AEEQP_NONE );
 	
 	AEAutoInterface<AEAUDIOSTREAM> to32bit, toIEEE, toPCM, filterStream, monoCh;
-	if ( ISERROR ( AE_createPCMToPCMAudioStream ( audioStream, 16, &to32bit ) ) )
+	if ( ISERROR ( AE_createPCMToPCMAudioStream ( audioStream, 24, &to32bit ) ) )
 		return -4;
 	if ( ISERROR ( AE_createPCMToIEEEFloatAudioStream ( to32bit, &toIEEE ) ) )
 		return -5;
 	if ( ISERROR ( AE_createFilterAudioStream ( toIEEE, &filters, false, &filterStream ) ) )
 		return -6;
-	if ( ISERROR ( AE_createMultiChannelsToMonoAudioStream ( filterStream, &monoCh ) ) )
-		return -7;
-	if ( ISERROR ( AE_createIEEEFloatToPCMAudioStream ( monoCh, 16, &toPCM ) ) )
+	//if ( ISERROR ( AE_createMultiChannelsToMonoAudioStream ( filterStream, &monoCh ) ) )
+	//	return -7;
+	if ( ISERROR ( AE_createIEEEFloatToPCMAudioStream ( /*monoCh*/toIEEE, 16, &toPCM ) ) )
 		return -8;
 
 	AEAutoInterface<AEAUDIOPLAYER> player;
 	//if ( ISERROR ( AE_createWASAPIAudioPlayer ( nullptr, AEWASAPISM_SHARED, &player ) ) )
-	if ( ISERROR ( AE_createXAudio2AudioPlayer ( 1, &player ) ) )
-	//if ( ISERROR ( AE_createOpenALAudioPlayer ( nullptr, &player ) ) )
+	//if ( ISERROR ( AE_createXAudio2AudioPlayer ( 1, &player ) ) )
+	if ( ISERROR ( AE_createOpenALAudioPlayer ( nullptr, &player ) ) )
 		return -9;
 
 	if ( ISERROR ( player->setSource ( player->object, /*audioStream*/toPCM ) ) )

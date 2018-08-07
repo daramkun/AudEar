@@ -26,10 +26,13 @@
 #define AL_FORMAT_71CHN16									0x1211
 #define AL_FORMAT_71CHN32									0x1212
 
-#define BUFFER_COUNT										3
+#define BUFFER_COUNT										4
 
 #include <vector>
+#include <queue>
 #include <memory>
+
+struct __ALQUEUEITEM { ALuint bufferId; AETIMESPAN sampleTime; int64_t readedTime; };
 
 class __OpenALAudioPlayer : public __Runnable
 {
@@ -37,7 +40,6 @@ public:
 	__OpenALAudioPlayer ( ALCdevice * device )
 		: _alcDevice ( device ), _bufferThread ( this )
 		, _state ( AEPS_STOPPED ), _sourceStream ( nullptr )
-		, _readedTime ( 0 ), _sampleTime ( { 0 } )
 	{
 		_performanceFrequency = __HRT_GetFrequency ();
 
@@ -52,11 +54,12 @@ public:
 		stop ();
 		AE_releaseInterface ( ( void ** ) &_sourceStream );
 
-		if ( _bufferIds.size () > 0 )
+		while ( _buffers.size () > 0 )
 		{
-			alSourceUnqueueBuffers ( _sourceId, ( ALsizei ) _bufferIds.size (), &_bufferIds [ 0 ] );
-			alDeleteBuffers ( ( ALsizei ) _bufferIds.size (), &_bufferIds [ 0 ] );
-			_bufferIds.clear ();
+			ALuint buffer = _buffers.front ().bufferId;
+			alSourceUnqueueBuffers ( _sourceId, 1, &buffer );
+			alDeleteBuffers ( 1, &buffer );
+			_buffers.pop ();
 		}
 
 		alDeleteSources ( 1, &_sourceId );
@@ -109,16 +112,16 @@ public:
 		if ( _state == AEPS_STOPPED ) return AEERROR_NOERROR;
 		if ( _sourceId == 0 ) return AEERROR_INVALID_CALL;
 
+		alSourceStop ( _sourceId );
+
 		_bufferThread.Terminate ( true );
 		_bufferThread.Join ();
 
-		alSourceStop ( _sourceId );
-
-		if ( _bufferIds.size () > 0 )
+		while ( _buffers.size () > 0 )
 		{
-			alSourceUnqueueBuffers ( _sourceId, ( ALsizei ) _bufferIds.size (), &_bufferIds [ 0 ] );
-			alDeleteBuffers ( ( ALsizei ) _bufferIds.size (), &_bufferIds [ 0 ] );
-			_bufferIds.clear ();
+			ALuint buffer = _buffers.front ().bufferId;
+			alSourceUnqueueBuffers ( _sourceId, 1, &buffer );
+			alDeleteBuffers ( 1, &buffer );
 		}
 
 		_sourceStream->seek ( _sourceStream->object, 0, AESO_BEGIN );
@@ -158,10 +161,23 @@ public:
 			return AEERROR_NOERROR;
 		}
 
-		LARGE_INTEGER currentTime;
-		QueryPerformanceCounter ( &currentTime );
+FALLBACK:
+		_spinLock.lock ();
+		{
+			while ( _buffers.size () < 1 )
+			{
+				_spinLock.unlock ();
+				goto FALLBACK;
+			}
 
-		timeSpan->ticks = _sampleTime.ticks + ( ( currentTime.QuadPart - _readedTime ) * 10000000 / _performanceFrequency );
+			__ALQUEUEITEM & buffer = _buffers.front ();
+
+			LARGE_INTEGER currentTime;
+			QueryPerformanceCounter ( &currentTime );
+
+			timeSpan->ticks = buffer.sampleTime.ticks + ( ( currentTime.QuadPart - buffer.readedTime ) * 10000000 / _performanceFrequency );
+		}
+		_spinLock.unlock ();
 
 		return AEERROR_NOERROR;
 	}
@@ -246,44 +262,60 @@ public:
 public:
 	virtual void Run ( void * obj, const bool & terminate )
 	{
-		_readedTime = __HRT_GetCounter ();
-
-		std::vector<ALuint> proceedBuffers;
-		while ( !terminate )
+		std::queue<ALuint> proceedBuffers;
+		bool innerTerminate = false;
+		while ( !terminate && !innerTerminate )
 		{
 			ALint playerState;
 			alGetSourcei ( _sourceId, AL_SOURCE_STATE, &playerState );
 
+			_spinLock.lock ();
 			int proceedBufferCount;
 			alGetSourcei ( _sourceId, AL_BUFFERS_PROCESSED, &proceedBufferCount );
 			for ( int i = 0; i < proceedBufferCount; ++i )
 			{
-				ALuint bufferId = _bufferIds [ 0 ];
-				_bufferIds.erase ( _bufferIds.begin () );
-				proceedBuffers.push_back ( bufferId );
+				if ( _buffers.size () < 1 )
+					break;
+
+				ALuint bufferId = _buffers.front ().bufferId;
+				_buffers.pop ();
+				proceedBuffers.push ( bufferId );
 			}
+			_spinLock.unlock ();
 
 			int actualSize = _wf.bytesPerSec / 100;
 			while ( proceedBuffers.size () > 0 )
 			{
-				if ( !buffering ( proceedBuffers [ 0 ], actualSize ) )
+				if ( !buffering ( proceedBuffers.front (), actualSize ) )
 				{
-					_state = AEPS_STOPPED;
-					_readedTime = 0;
-					_sampleTime.ticks = 0;
+					innerTerminate = true;
 					break;
 				}
-				proceedBuffers.erase ( proceedBuffers.begin () );
+				proceedBuffers.pop ();
 			}
+
+			if ( innerTerminate )
+				break;
 
 			if ( _state == AEPS_PLAYING && playerState != AL_PLAYING )
 				alSourcePlay ( _sourceId );
 		}
 
-		if ( proceedBuffers.size () > 0 )
+		do
 		{
-			alDeleteBuffers ( ( ALsizei ) proceedBuffers.size (), &proceedBuffers [ 0 ] );
-			proceedBuffers.clear ();
+			ALint state;
+			alGetSourcei ( _sourceId, AL_SOURCE_STATE, &state );
+			if ( state == AL_STOPPED )
+			{
+				_state = AEPS_STOPPED;
+				break;
+			}
+		} while ( true );
+
+		while ( proceedBuffers.size () > 0 )
+		{
+			alDeleteBuffers ( 1, &proceedBuffers.front () );
+			proceedBuffers.pop ();
 		}
 	}
 
@@ -303,15 +335,15 @@ private:
 		}
 
 		int64_t pos = _sourceStream->tell ( _sourceStream->object );
-		_sampleTime = AETIMESPAN_initializeWithSeconds ( pos / ( double ) _wf.bytesPerSec );
+		AETIMESPAN sampleTime = AETIMESPAN_initializeWithSeconds ( pos / ( double ) _wf.bytesPerSec );
 
 		alSourceUnqueueBuffers ( _sourceId, 1, &bufferId );
 		alBufferData ( bufferId, _bufferFormat, &readBuffer [ 0 ], ( ALsizei ) readed, _wf.samplesPerSec );
 		alSourceQueueBuffers ( _sourceId, 1, &bufferId );
 
-		_bufferIds.push_back ( bufferId );
-
-		_readedTime = __HRT_GetCounter ();
+		_spinLock.lock ();
+		_buffers.push ( { bufferId, sampleTime, __HRT_GetCounter () } );
+		_spinLock.unlock ();
 
 		return true;
 	}
@@ -324,15 +356,14 @@ private:
 	ALenum _bufferFormat;
 
 	ALuint _sourceId;
-	std::vector<ALuint> _bufferIds;
+	std::queue<__ALQUEUEITEM> _buffers;
 
 	AEAutoInterface<AEAUDIOSTREAM> _sourceStream;
 	__Thread _bufferThread;
+	__SpinLock _spinLock;
 
 	AEPLAYERSTATE _state;
 	int64_t _performanceFrequency;
-	int64_t _readedTime;
-	AETIMESPAN _sampleTime;
 };
 
 EXTC AEEXP error_t AE_createOpenALAudioPlayer ( const char * deviceName, AEAUDIOPLAYER ** ret )

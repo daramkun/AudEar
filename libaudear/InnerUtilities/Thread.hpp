@@ -128,4 +128,48 @@ private:
 	bool terminate;
 };
 
+class __SpinLock
+{
+public:
+	__SpinLock ()
+	{
+#if AE_PLATFORM_WINDOWS || AE_PLATFORM_UWP
+		_lock = SRWLOCK_INIT;
+#else
+		_lock = ATOMIC_FLAG_INIT;
+#endif
+	}
+	~__SpinLock ()
+	{
+		unlock ();
+	}
+
+public:
+	void lock ()
+	{
+#if AE_PLATFORM_WINDOWS || AE_PLATFORM_UWP
+		AcquireSRWLockExclusive ( &_lock );
+#else
+		while ( _lock.test_and_set ( std::memory_order_acquire ) )
+			;
+#endif
+	}
+
+	void unlock ()
+	{
+#if AE_PLATFORM_WINDOWS || AE_PLATFORM_UWP
+		ReleaseSRWLockExclusive ( &_lock );
+#else
+		_lock.clear ( std::memory_order_release );
+#endif
+	}
+
+private:
+#if AE_PLATFORM_WINDOWS || AE_PLATFORM_UWP
+	SRWLOCK _lock;
+#else
+	std::atomic_flag _lock;
+#endif
+};
+
 #endif
