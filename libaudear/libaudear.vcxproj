@@ -159,6 +159,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="audear.gaming.h" />
     <ClInclude Include="audear.h" />
     <ClInclude Include="audear.preprocessors.h" />
     <ClInclude Include="audear.struct.h" />

@@ -13,6 +13,7 @@
     <ClInclude Include="InnerUtilities\Thread.hpp" />
     <ClInclude Include="InnerUtilities\HighResolutionTimer.hpp" />
     <ClInclude Include="InnerUtilities\TypeConverter.hpp" />
+    <ClInclude Include="audear.gaming.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Decoders\audear.mfdecoder.cpp" />

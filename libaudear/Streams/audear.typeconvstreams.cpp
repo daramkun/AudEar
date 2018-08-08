@@ -5,11 +5,7 @@
 #include <memory>
 #include <cmath>
 
-#if /*( AE_ARCH_IA32 || AE_ARCH_AMD64 ) && USE_SIMD/**/0
-#	define AE_CONV											__g_TC_sse_converters
-#else
-#	define AE_CONV											__g_TC_plain_converters
-#endif
+const __TC_SAMPLE_CONVERTERS & sample_converters = __TC_get_optimal_converter ();
 
 class __ToIEEEFloatAudioStream
 {
@@ -28,10 +24,10 @@ public:
 
 		switch ( wf.bitsPerSample )
 		{
-			case 8: _conv = AE_CONV.i8_to_f32; break;
-			case 16: _conv = AE_CONV.i16_to_f32; break;
-			case 24: _conv = AE_CONV.i24_to_f32; break;
-			case 32: _conv = AE_CONV.i32_to_f32; break;
+			case 8: _conv = sample_converters.i8_to_f32; break;
+			case 16: _conv = sample_converters.i16_to_f32; break;
+			case 24: _conv = sample_converters.i24_to_f32; break;
+			case 32: _conv = sample_converters.i32_to_f32; break;
 		}
 	}
 	~__ToIEEEFloatAudioStream ()
@@ -123,10 +119,10 @@ public:
 
 		switch ( _bps )
 		{
-			case 8: _conv = AE_CONV.f32_to_i8; break;
-			case 16: _conv = AE_CONV.f32_to_i16; break;
-			case 24: _conv = AE_CONV.f32_to_i24; break;
-			case 32: _conv = AE_CONV.f32_to_i32; break;
+			case 8: _conv = sample_converters.f32_to_i8; break;
+			case 16: _conv = sample_converters.f32_to_i16; break;
+			case 24: _conv = sample_converters.f32_to_i24; break;
+			case 32: _conv = sample_converters.f32_to_i32; break;
 		}
 	}
 	~__IEEEFloatToPCMAudioStream ()
@@ -228,33 +224,33 @@ public:
 			case 8:
 				switch ( _bps )
 				{
-					case 16: _conv = AE_CONV.i8_to_i16; break;
-					case 24: _conv = AE_CONV.i8_to_i24; break;
-					case 32: _conv = AE_CONV.i8_to_i32; break;
+					case 16: _conv = sample_converters.i8_to_i16; break;
+					case 24: _conv = sample_converters.i8_to_i24; break;
+					case 32: _conv = sample_converters.i8_to_i32; break;
 				}
 				break;
 			case 16:
 				switch ( _bps )
 				{
-					case 8: _conv = AE_CONV.i16_to_i8; break;
-					case 24: _conv = AE_CONV.i16_to_i24; break;
-					case 32: _conv = AE_CONV.i16_to_i32; break;
+					case 8: _conv = sample_converters.i16_to_i8; break;
+					case 24: _conv = sample_converters.i16_to_i24; break;
+					case 32: _conv = sample_converters.i16_to_i32; break;
 				}
 				break;
 			case 24:
 				switch ( _bps )
 				{
-					case 8: _conv = AE_CONV.i24_to_i8; break;
-					case 16: _conv = AE_CONV.i24_to_i16; break;
-					case 32: _conv = AE_CONV.i24_to_i32; break;
+					case 8: _conv = sample_converters.i24_to_i8; break;
+					case 16: _conv = sample_converters.i24_to_i16; break;
+					case 32: _conv = sample_converters.i24_to_i32; break;
 				}
 				break;
 			case 32:
 				switch ( _bps )
 				{
-					case 8: _conv = AE_CONV.i32_to_i8; break;
-					case 16: _conv = AE_CONV.i32_to_i16; break;
-					case 24: _conv = AE_CONV.i32_to_i24; break;
+					case 8: _conv = sample_converters.i32_to_i8; break;
+					case 16: _conv = sample_converters.i32_to_i16; break;
+					case 24: _conv = sample_converters.i32_to_i24; break;
 				}
 				break;
 		}

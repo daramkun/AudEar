@@ -123,7 +123,7 @@ public:
 public:
 	error_t readSample ( AEAUDIOSAMPLE ** sample )
 	{
-		std::shared_ptr<int8_t []> buffer ( new int8_t [ byterate ] );
+		AEAUDIOBUFFER<int8_t> buffer ( byterate );
 		AETIMESPAN current = AETIMESPAN_initializeWithByteCount ( file->dataChunkDataSize - file->bytesRemaining, byterate );
 		drwav_uint64 result;
 		if ( file->bitsPerSample == 32 )
@@ -137,7 +137,7 @@ public:
 			return AEERROR_FAIL;
 
 		AEAUDIOSAMPLE * ret = AE_allocInterfaceType ( AEAUDIOSAMPLE );
-		ret->object = new __DrWAVAudioSample ( &buffer [ 0 ], result * ( fixedBps / 8 ), current, AETIMESPAN_initializeWithSeconds ( result / ( float ) byterate ) );
+		ret->object = new __DrWAVAudioSample ( buffer, result * ( fixedBps / 8 ), current, AETIMESPAN_initializeWithSeconds ( result / ( float ) byterate ) );
 		ret->free = [] ( void * obj ) { delete reinterpret_cast< __DrWAVAudioSample* >( obj ); };
 		ret->tag = "AudEar Open Source Software CODEC Dr WAV's WAV Audio Decoder's Sample";
 		ret->getSampleTime = [] ( void * obj, AETIMESPAN * timeSpan ) { return reinterpret_cast< __DrWAVAudioSample* >( obj )->getSampleTime ( timeSpan ); };

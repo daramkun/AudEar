@@ -3,6 +3,7 @@
 #include "../libaudear/InnerUtilities/TypeConverter.hpp"
 #include "../libaudear/InnerUtilities/HighResolutionTimer.hpp"
 
+#include <ctime>
 #include <memory>
 
 #if AE_ARCH_IA32
@@ -22,8 +23,8 @@
 
 #define SAMPLE_CHANNELS										2
 #define SAMPLE_SIZE											48000
-#define SAMPLE_SOURCE_TYPE									int24_t
-#define SAMPLE_DESTINATION_TYPE								int8_t
+#define SAMPLE_SOURCE_TYPE									int16_t
+#define SAMPLE_DESTINATION_TYPE								float
 
 void __check_valid ( const __TC_SAMPLE_CONVERTERS & converters, const SAMPLE_SOURCE_TYPE * source1, SAMPLE_SOURCE_TYPE * source2, SAMPLE_DESTINATION_TYPE * destination )
 {
@@ -49,6 +50,8 @@ void __check_valid ( const __TC_SAMPLE_CONVERTERS & converters, const SAMPLE_SOU
 		return;
 	}
 
+	bool printFail = false;
+	int failedCount = 0;
 	for ( int i = 0; i < SAMPLE_SIZE * SAMPLE_CHANNELS; ++i )
 	{
 		if ( source1 [ i ] != source2 [ i ] )
@@ -61,23 +64,29 @@ void __check_valid ( const __TC_SAMPLE_CONVERTERS & converters, const SAMPLE_SOU
 			}
 			else
 			{
-				int sm = pow ( 2, sizeof ( SAMPLE_SOURCE_TYPE ) * 8 - 1 ) - 1;
-				int dm = pow ( 2, sizeof ( SAMPLE_DESTINATION_TYPE ) * 8 - 1 ) - 1;
+				int sm = ( int ) pow ( 2, sizeof ( SAMPLE_SOURCE_TYPE ) * 8 - 1 ) - 1;
+				int dm = ( int ) pow ( 2, sizeof ( SAMPLE_DESTINATION_TYPE ) * 8 - 1 ) - 1;
 				if ( abs ( source1 [ i ] - source2 [ i ] ) > ( max ( sm, dm ) / min ( sm, dm ) ) )
 					diff = true;
 			}
 
-			if ( diff )
+			if ( diff && !printFail )
 			{
-				printf ( "F(%f to %f, Diff: %f)\n",
+				printf ( "F(%f to %f, Diff: %f, ",
 					( float ) source1 [ i ], ( float ) source2 [ i ],
 					( float ) ( source1 [ i ] - source2 [ i ] ) );
-				return;
+				printFail = true;
 			}
+
+			if ( diff )
+				++failedCount;
 		}
 	}
 
-	printf ( "T\n" );
+	if ( failedCount > 0 )
+		printf ( "Failed ratio: %f%%(%d times))\n", failedCount / ( float ) ( SAMPLE_SIZE * SAMPLE_CHANNELS ) * 100, failedCount );
+	else
+		printf ( "T\n" );
 }
 
 void __measure ( const __TC_SAMPLE_CONVERTERS & converters )
@@ -117,19 +126,33 @@ int main ( void )
 	AEAUDIOBUFFER<SAMPLE_DESTINATION_TYPE> destination ( SAMPLE_SIZE * SAMPLE_CHANNELS );
 	AEAUDIOBUFFER<SAMPLE_SOURCE_TYPE> source2 ( SAMPLE_SIZE * SAMPLE_CHANNELS );
 
+	srand ( ( uint32_t ) time ( nullptr ) );
 	if ( std::is_same<SAMPLE_SOURCE_TYPE, float>::value )
 	{
-		for ( int i = 0; i < SAMPLE_SIZE * SAMPLE_CHANNELS; ++i )
-			source1 [ i ] = rand () / ( float ) INT_MAX;
+		if ( !std::is_same<SAMPLE_DESTINATION_TYPE, float>::value )
+		{
+			int value = ( int ) pow ( 2, sizeof ( SAMPLE_DESTINATION_TYPE ) * 8 - 1 ) - 1;
+			for ( int i = 0; i < SAMPLE_SIZE * SAMPLE_CHANNELS; ++i )
+				source1 [ i ] = ( rand () % value ) / value;
+		}
+		else
+		{
+			for ( int i = 0; i < SAMPLE_SIZE * SAMPLE_CHANNELS; ++i )
+				source1 [ i ] = rand () / ( float ) INT_MAX;
+		}
 	}
 
 	printf ( "\n== Plain C++ Code ==\n" );
 	__check_valid ( __g_TC_plain_converters, source1, source2, destination );
 	__measure ( __g_TC_plain_converters );
 
-	printf ( "\n== SIMD Code ==\n" );
+	printf ( "\n== SIMD Code (SSE) ==\n" );
 	__check_valid ( __g_TC_sse_converters, source1, source2, destination );
 	__measure ( __g_TC_sse_converters );
+
+	printf ( "\n== SIMD Code (AVX) ==\n" );
+	__check_valid ( __g_TC_avx_converters, source1, source2, destination );
+	__measure ( __g_TC_avx_converters );
 
 	return 0;
 }

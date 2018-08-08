@@ -14,17 +14,32 @@
 #include <cmath>
 #include <type_traits>
 
+enum TypeConverterSupport
+{
+	TCS_PLAIN = 0,
+	TCS_SSE = 1,
+	TCS_AVX = 2,
+	TCS_NEON = 3,
+};
+
 #if ( AE_ARCH_IA32 || AE_ARCH_AMD64 )
-//  SSE 2
+//  MMX, SSE, SSE 2
 #	include <mmintrin.h>
+#	include <xmmintrin.h>
 #	include <emmintrin.h>
 //  SSE 3
-#	include <immintrin.h>
 #	include <pmmintrin.h>
-//  SSE 4
+//  SSE 4.x
 #	include <smmintrin.h>
+#	include <nmmintrin.h>
+//  AVX
+#	include <immintrin.h>
 #elif ( AE_ARCH_ARM || AE_ARCH_ARM64 )
-
+//  NEON
+#	include <arm_neon.h>
+#	if AE_PLATFORM_ANDROID
+#		include <cpu-features.h>
+#	endif
 #endif
 
 #pragma pack ( push, 1 )
@@ -189,6 +204,10 @@ static const __TC_SAMPLE_CONVERTERS __g_TC_plain_converters = {
 	__TC_sample_convert<int32_t, int24_t>,
 };
 
+static inline bool __TC_plain_support () {
+	return true;
+}
+
 #if ( AE_ARCH_IA32 || AE_ARCH_AMD64 )
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 //                                                                                                //
@@ -303,7 +322,7 @@ template<> static inline bool __TC_sample_convert_sse<float, int24_t> ( const vo
 }
 template<> static inline bool __TC_sample_convert_sse<float, int32_t> ( const void * src, void * dest, int64_t srcByteCount, int64_t destByteSize ) noexcept
 {
-	static const __m128 f32_to_i32_converter = _mm_set1_ps ( ( float ) __TC_INV_INT );
+	static const __m128 f32_to_i32_converter = _mm_set1_ps ( ( float ) __TC_INT );
 
 	if ( srcByteCount > destByteSize )
 		return false;
@@ -733,6 +752,313 @@ static const __TC_SAMPLE_CONVERTERS __g_TC_sse_converters = {
 	__TC_sample_convert_sse<int32_t, int16_t>,
 	__TC_sample_convert_sse<int32_t, int24_t>,
 };
+#else
+static const __TC_SAMPLE_CONVERTERS __g_TC_sse_converters = {};
 #endif
+
+static inline bool __TC_sse_support ()
+{
+#if AE_ARCH_IA32 || AE_ARCH_AMD64
+	int cpuid [ 4 ];
+	__cpuidex ( cpuid, 1, 0 );
+
+	return cpuid [ 3 ] & ( 1 << 26 );
+#else
+	return false;
+#endif
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                //
+//      //      //      //  //      //    //////////  //////////  //      //  //      //          //
+//    //  //    //      //   //    //     //          //      //  ////    //  //      //          //
+//    //  //     //    //     //  //      //          //      //  //  //  //   //    //           //
+//    //////     //    //       //        //          //      //  //  //  //   //    //           //
+//  //      //    //  //      //  //      //          //      //  //  //  //    //  //            //
+//  //      //    //  //     //    //     //          //      //  //    ////    //  //            //
+//  //      //      //      //      //    //////////  //////////  //      //      //              //
+//                                                                                                //
+////////////////////////////////////////////////////////////////////////////////////////////////////
+#if AE_ARCH_AMD64
+static const __m256 __g_TC_min_value_avx = _mm256_set1_ps ( 1 );
+static const __m256 __g_TC_max_value_avx = _mm256_set1_ps ( -1 );
+
+static inline __m256 __TC_convert ( __m256i value, __m256 conv )
+{
+	return _mm256_min_ps ( __g_TC_min_value_avx, _mm256_max_ps ( __g_TC_max_value_avx, _mm256_mul_ps ( _mm256_cvtepi32_ps ( value ), conv ) ) );
+}
+static inline __m256i __TC_convert ( __m256 value, __m256 conv )
+{
+	return _mm256_cvtps_epi32 ( _mm256_mul_ps ( ( _mm256_min_ps ( __g_TC_min_value_avx, _mm256_max_ps ( __g_TC_max_value_avx, value ) ) ), conv ) );
+}
+
+template<typename S, typename D>
+static inline bool __TC_sample_convert_avx ( const void * src, void * dest, int64_t srcByteCount, int64_t destByteSize ) noexcept
+{
+	static_assert ( true, "Not supported format." );
+	return false;
+}
+
+////////////////////////////////////////////////////////////
+// float to
+////////////////////////////////////////////////////////////
+template<> static inline bool __TC_sample_convert_avx<float, int8_t> ( const void * src, void * dest, int64_t srcByteCount, int64_t destByteSize ) noexcept
+{
+	static const __m256 f32_to_i8_converter = _mm256_set1_ps ( ( float ) __TC_CHAR );
+	static const __m256i i32_to_i8_shuffle = _mm256_set_epi8 ( -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 28, 24, 20, 16, 12, 8, 4, 0 );
+
+	if ( srcByteCount > destByteSize * 4 )
+		return false;
+
+	int8_t arr [ 32 ];
+
+	float * srcBuffer = ( float * ) src;
+	int8_t * destBuffer = ( int8_t * ) dest;
+	int64_t loopCount = srcByteCount / sizeof ( float );
+	int64_t SIMDLoopCount = loopCount / 8 * 8;
+	for ( int64_t i = 0; i < SIMDLoopCount; i += 8 )
+	{
+		__m256 loadedf = _mm256_load_ps ( srcBuffer + i );
+		__m256i loaded = __TC_convert ( loadedf, f32_to_i8_converter );
+		loaded = _mm256_shuffle_epi8 ( loaded, i32_to_i8_shuffle );
+		_mm256_store_si256 ( ( __m256i* ) arr, loaded );
+		memcpy ( destBuffer + i, arr, 8 );
+	}
+	for ( int64_t i = SIMDLoopCount; i < loopCount; ++i )
+		destBuffer [ i ] = __TC_convert<float, int8_t> ( srcBuffer [ i ] );
+
+	return true;
+}
+template<> static inline bool __TC_sample_convert_avx<float, int16_t> ( const void * src, void * dest, int64_t srcByteCount, int64_t destByteSize ) noexcept
+{
+	static const __m256  f32_to_i16_converter = _mm256_set1_ps ( ( float ) __TC_SHORT );
+	static const __m256i i32_to_i16_shuffle = _mm256_set_epi8 ( -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 29, 28, 25, 24, 21, 20, 17, 16, 13, 12, 9, 8, 5, 4, 1, 0 );
+
+	if ( srcByteCount > destByteSize * 2 )
+		return false;
+
+	int16_t arr [ 16 ];
+
+	float * srcBuffer = ( float * ) src;
+	int16_t * destBuffer = ( int16_t * ) dest;
+	int64_t loopCount = srcByteCount / sizeof ( float );
+	int64_t SIMDLoopCount = loopCount / 8 * 8;
+	for ( int64_t i = 0; i < SIMDLoopCount; i += 8 )
+	{
+		__m256i loaded = __TC_convert ( _mm256_load_ps ( srcBuffer + i ), f32_to_i16_converter );
+		_mm256_store_si256 ( ( __m256i * ) &arr, _mm256_shuffle_epi8 ( loaded, i32_to_i16_shuffle ) );
+		memcpy ( destBuffer + i, arr, 16 );
+	}
+	for ( int64_t i = SIMDLoopCount; i < loopCount; ++i )
+		destBuffer [ i ] = __TC_convert<float, int16_t> ( srcBuffer [ i ] );
+
+	return true;
+}
+template<> static inline bool __TC_sample_convert_avx<float, int24_t> ( const void * src, void * dest, int64_t srcByteCount, int64_t destByteSize ) noexcept
+{
+	static const __m256 f32_to_i24_converter = _mm256_set1_ps ( ( float ) __TC_24BIT );
+	static const __m256i i32_to_i24_shuffle = _mm256_set_epi8 ( -1, -1, -1, -1, -1, -1, -1, -1, 30, 29, 28, 26, 25, 24, 22, 21, 20, 18, 17, 16, 14, 13, 12, 10, 9, 8, 6, 5, 4, 2, 1, 0 );
+
+	if ( srcByteCount * 3 > destByteSize * 4 )
+		return false;
+
+	int8_t arr [ 32 ];
+
+	float * srcBuffer = ( float * ) src;
+	int24_t * destBuffer = ( int24_t * ) dest;
+	int64_t loopCount = srcByteCount / sizeof ( float );
+	int64_t SIMDLoopCount = loopCount / 8 * 8;
+	for ( int64_t i = 0; i < SIMDLoopCount; i += 8 )
+	{
+		__m256i loaded = __TC_convert ( _mm256_load_ps ( srcBuffer + i ), f32_to_i24_converter );
+		loaded = _mm256_shuffle_epi8 ( loaded, i32_to_i24_shuffle );
+		_mm256_store_si256 ( ( __m256i * ) &arr, loaded );
+		memcpy ( destBuffer + i, arr, 24 );
+	}
+	for ( int64_t i = SIMDLoopCount; i < loopCount; ++i )
+		destBuffer [ i ] = __TC_convert<float, int24_t> ( srcBuffer [ i ] );
+
+	return true;
+}
+template<> static inline bool __TC_sample_convert_avx<float, int32_t> ( const void * src, void * dest, int64_t srcByteCount, int64_t destByteSize ) noexcept
+{
+	static const __m256 f32_to_i32_converter = _mm256_set1_ps ( ( float ) __TC_INT );
+
+	if ( srcByteCount > destByteSize )
+		return false;
+
+	float * srcBuffer = ( float * ) src;
+	int32_t * destBuffer = ( int32_t * ) dest;
+	int64_t loopCount = srcByteCount / sizeof ( float );
+	int64_t SIMDLoopCount = loopCount / 8 * 8;
+	for ( int64_t i = 0; i < SIMDLoopCount; i += 8 )
+		_mm256_store_si256 ( ( __m256i * ) ( destBuffer + i ), __TC_convert ( _mm256_load_ps ( srcBuffer + i ), f32_to_i32_converter ) );
+	for ( int64_t i = SIMDLoopCount; i < loopCount; ++i )
+		destBuffer [ i ] = __TC_convert<float, int32_t> ( srcBuffer [ i ] );
+
+	return true;
+}
+
+////////////////////////////////////////////////////////////
+// 16-bit to
+////////////////////////////////////////////////////////////
+template<> static inline bool __TC_sample_convert_avx<int16_t, float> ( const void * src, void * dest, int64_t srcByteCount, int64_t destByteSize ) noexcept
+{
+	static const __m256  i16_to_f32_converter = _mm256_set1_ps ( ( float ) __TC_INV_SHORT );
+
+	if ( srcByteCount * 2 > destByteSize )
+		return false;
+
+	int16_t * srcBuffer = ( int16_t * ) src;
+	float * destBuffer = ( float * ) dest;
+	int64_t loopCount = srcByteCount / sizeof ( int16_t );
+	int64_t SIMDLoopCount = loopCount / 8 * 8;
+	for ( int64_t i = 0; i < SIMDLoopCount; i += 8 )
+		_mm256_store_ps ( destBuffer + i, __TC_convert ( _mm256_cvtepi16_epi32 ( _mm_load_si128 ( ( __m128i * ) ( srcBuffer + i ) ) ), i16_to_f32_converter ) );
+	destBuffer = ( float * ) dest;
+	for ( int64_t i = SIMDLoopCount; i < loopCount; ++i )
+		destBuffer [ i ] = __TC_convert<int16_t, float> ( srcBuffer [ i ] );
+
+	return true;
+}
+
+////////////////////////////////////////////////////////////
+// 24-bit to
+////////////////////////////////////////////////////////////
+
+
+////////////////////////////////////////////////////////////
+// 32-bit to
+////////////////////////////////////////////////////////////
+template<> static inline bool __TC_sample_convert_avx<int32_t, float> ( const void * src, void * dest, int64_t srcByteCount, int64_t destByteSize ) noexcept
+{
+	static const __m256  i32_to_f32_converter = _mm256_set1_ps ( ( float ) __TC_INV_INT );
+
+	if ( srcByteCount > destByteSize )
+		return false;
+
+	int32_t * srcBuffer = ( int32_t * ) src;
+	float * destBuffer = ( float * ) dest;
+	int64_t loopCount = srcByteCount / sizeof ( int32_t );
+	int64_t SIMDLoopCount = loopCount / 8 * 8;
+	for ( int64_t i = 0; i < SIMDLoopCount; i += 8 )
+		_mm256_store_ps ( destBuffer + i, __TC_convert ( _mm256_load_si256 ( ( const __m256i * ) &srcBuffer [ i ] ), i32_to_f32_converter ) );
+	for ( int64_t i = SIMDLoopCount; i < loopCount; ++i )
+		destBuffer [ i ] = __TC_convert<int32_t, float> ( srcBuffer [ i ] );
+
+	return true;
+}
+
+static const __TC_SAMPLE_CONVERTERS __g_TC_avx_converters = {
+	__TC_sample_convert_avx<float, int8_t>,
+	__TC_sample_convert_avx<float, int16_t>,
+	__TC_sample_convert_avx<float, int24_t>,
+	__TC_sample_convert_avx<float, int32_t>,
+
+	__TC_sample_convert_sse<int8_t, float>,
+	__TC_sample_convert_sse<int8_t, int16_t>,
+	__TC_sample_convert_sse<int8_t, int24_t>,
+	__TC_sample_convert_sse<int8_t, int32_t>,
+
+	__TC_sample_convert_avx<int16_t, float>,
+	__TC_sample_convert_sse<int16_t, int8_t>,
+	__TC_sample_convert_sse<int16_t, int24_t>,
+	__TC_sample_convert_sse<int16_t, int32_t>,
+
+	__TC_sample_convert_sse<int24_t, float>,
+	__TC_sample_convert_sse<int24_t, int8_t>,
+	__TC_sample_convert_sse<int24_t, int16_t>,
+	__TC_sample_convert_sse<int24_t, int32_t>,
+
+	__TC_sample_convert_avx<int32_t, float>,
+	__TC_sample_convert_sse<int32_t, int8_t>,
+	__TC_sample_convert_sse<int32_t, int16_t>,
+	__TC_sample_convert_sse<int32_t, int24_t>,
+};
+#else
+static const __TC_SAMPLE_CONVERTERS __g_TC_avx_converters = {};
+#endif
+
+static inline bool __TC_avx_support ()
+{
+#if AE_ARCH_AMD64
+	int cpuid [ 4 ];
+	__cpuidex ( cpuid, 1, 0 );
+
+	return cpuid [ 2 ] & ( 1 << 28 );
+#else
+	return false;
+#endif
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                                //
+//  //      //  //////////  //////////  //      //    //////////  //////////  //      //  //      //
+//  ////    //  //          //      //  ////    //    //          //      //  ////    //  //      //
+//  //  //  //  //          //      //  //  //  //    //          //      //  //  //  //   //    ///
+//  //  //  //  //////////  //      //  //  //  //    //          //      //  //  //  //   //    ///
+//  //  //  //  //          //      //  //  //  //    //          //      //  //  //  //    //  ////
+//  //    ////  //          //      //  //    ////    //          //      //  //    ////    //  ////
+//  //      //  //////////  //////////  //      //    //////////  //////////  //      //      //  //
+//                                                                                                //
+////////////////////////////////////////////////////////////////////////////////////////////////////
+#if AE_ARCH_ARM || AE_ARCH_ARM64
+
+static const __TC_SAMPLE_CONVERTERS __g_TC_neon_converters = {
+
+};
+#else
+static const __TC_SAMPLE_CONVERTERS __g_TC_neon_converters = {};
+#endif
+
+static inline bool __TC_neon_support ()
+{
+#if AE_ARCH_ARM || AE_ARCH_ARM64
+#	if AE_PLATFORM_ANDROID
+	return ( android_getCpuFamily () == ANDROID_CPU_FAMILY_ARM
+		&& ( android_getCpuFeature () & ANDROID_CPU_ARM_FEATURE_NEON ) != 0 );
+#	elif AE_PLATFORM_IOS
+	return true;
+#	else
+	return false;
+#	endif
+#else
+	return false;
+#endif
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+static inline bool __TC_is_support_converter ( TypeConverterSupport tcs )
+{
+	switch ( tcs )
+	{
+		case TCS_PLAIN: return __TC_plain_support ();
+		case TCS_SSE: return __TC_sse_support ();
+		case TCS_AVX: return __TC_avx_support ();
+		//case TCS_NEON: return __TC_neon_support ();
+		default: return false;
+	}
+}
+
+static inline const __TC_SAMPLE_CONVERTERS & __TC_get_optimal_converter ()
+{
+	struct { TypeConverterSupport tcs; const __TC_SAMPLE_CONVERTERS & conv; } convs [] = {
+		{ TCS_NEON,  __g_TC_neon_converters },
+		{ TCS_AVX,   __g_TC_avx_converters },
+		{ TCS_SSE,   __g_TC_sse_converters },
+	};
+	for ( auto conv : convs )
+	{
+		if ( __TC_is_support_converter ( conv.tcs ) )
+			return conv.conv;
+	}
+
+	return __g_TC_plain_converters;
+}
 
 #endif

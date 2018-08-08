@@ -132,7 +132,7 @@ public:
 	error_t readSample ( AEAUDIOSAMPLE ** sample )
 	{
 		int length = byterate / 100;
-		std::shared_ptr<int8_t []> buffer ( new int8_t [ length ] );
+		AEAUDIOBUFFER<int8_t> buffer ( length );
 		int bitstream;
 		AETIMESPAN current = AETIMESPAN_initializeWithSeconds ( ov_time_tell ( &file ) );
 		long result = ov_read ( &file, ( char * ) &buffer [ 0 ], length, 0, 2, 1, &bitstream );
@@ -143,7 +143,7 @@ public:
 			return AEERROR_FAIL;
 
 		AEAUDIOSAMPLE * ret = AE_allocInterfaceType ( AEAUDIOSAMPLE );
-		ret->object = new __OggVorbisAudioSample ( &buffer [ 0 ], result, current, AETIMESPAN_initializeWithSeconds ( result / ( float ) byterate ) );
+		ret->object = new __OggVorbisAudioSample ( buffer, result, current, AETIMESPAN_initializeWithSeconds ( result / ( float ) byterate ) );
 		ret->free = [] ( void * obj ) { delete reinterpret_cast< __OggVorbisAudioSample* >( obj ); };
 		ret->tag = "AudEar Open Source Software CODEC OggVorbis Audio Decoder's Sample";
 		ret->getSampleTime = [] ( void * obj, AETIMESPAN * timeSpan ) { return reinterpret_cast< __OggVorbisAudioSample* >( obj )->getSampleTime ( timeSpan ); };

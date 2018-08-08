@@ -59,9 +59,9 @@ inline int get_mp3_header_chunk_size ( uint32_t headerValue, int * channels, int
 
 	int frequencyTable [ 4 ] [ 4 ] = {
 		{ 11025, 12000,  8000, 0 },																	// kMEPGVERSION_2_5
-	{ 0,     0,         0, 0 },																	// kMPEGVERSION_RESERVED
-	{ 22050, 24000, 16000, 0 },																	// kMEPGVERSION_2
-	{ 44100, 48000, 32000, 0 }																	// kMEPGVERSION_1
+		{ 0,     0,         0, 0 },																	// kMPEGVERSION_RESERVED
+		{ 22050, 24000, 16000, 0 },																	// kMEPGVERSION_2
+		{ 44100, 48000, 32000, 0 }																	// kMEPGVERSION_1
 	};
 
 	enum : uint8_t {

@@ -1,6 +1,8 @@
 #ifndef __AUDEAR_INTERFACE_H__
 #define __AUDEAR_INTERFACE_H__
 
+#define AE_INTERFACE_HEADER									int32_t refCount; void * object; void ( *free ) ( void * obj ); const char * tag;
+
 typedef enum AEEXP
 {
 	AESO_BEGIN,
@@ -10,10 +12,7 @@ typedef enum AEEXP
 
 typedef struct AEEXP
 {
-	int32_t refCount;
-	void * object;
-	void ( *free ) ( void * obj );
-	const char * tag;
+	AE_INTERFACE_HEADER;
 
 	int64_t ( *read ) ( void * obj, uint8_t * buffer, int64_t len );
 	int64_t ( *seek ) ( void * obj, int64_t offset, AESEEKORIGIN origin );
@@ -28,10 +27,7 @@ EXTC AEEXP int64_t AESTREAM_length ( AESTREAM * stream );
 
 typedef struct AEEXP
 {
-	int32_t refCount;
-	void * object;
-	void ( *free ) ( void * obj );
-	const char * tag;
+	AE_INTERFACE_HEADER;
 
 	error_t ( *getSampleTime ) ( void * obj, AETIMESPAN * timeSpan );
 	error_t ( *getSampleDuration ) ( void * obj, AETIMESPAN * timeSpan );
@@ -46,10 +42,7 @@ EXTC AEEXP error_t AEAUDIOSAMPLE_unlock ( AEAUDIOSAMPLE * sample );
 
 typedef struct AEEXP
 {
-	int32_t refCount;
-	void * object;
-	void ( *free ) ( void * obj );
-	const char * tag;
+	AE_INTERFACE_HEADER;
 
 	error_t ( *initialize ) ( void * obj, AESTREAM * stream );
 	error_t ( *getWaveFormat ) ( void * obj, AEWAVEFORMAT * format );
@@ -68,10 +61,7 @@ EXTC AEEXP error_t AEAUDIODECODER_readSample ( AEAUDIODECODER * decoder, AEAUDIO
 
 typedef struct AEEXP
 {
-	int32_t refCount;
-	void * object;
-	void ( *free ) ( void * obj );
-	const char * tag;
+	AE_INTERFACE_HEADER;
 
 	error_t ( *getWaveFormat ) ( void * obj, AEWAVEFORMAT * format );
 	error_t ( *buffering ) ( void * obj );
@@ -98,10 +88,7 @@ typedef enum AEEXP
 
 typedef struct AEEXP
 {
-	int32_t refCount;
-	void * object;
-	void ( *free ) ( void * obj );
-	const char * tag;
+	AE_INTERFACE_HEADER;
 
 	error_t ( *play ) ( void * obj );
 	error_t ( *pause ) ( void * obj );

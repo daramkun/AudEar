@@ -254,7 +254,7 @@ public:
 			}
 		}
 
-		std::shared_ptr<int8_t []> buffer ( new int8_t [ bytesRead ] );
+		AEAUDIOBUFFER<int8_t> buffer ( bytesRead );
 		memcpy ( &buffer [ 0 ], ( void * ) bytes, bytesRead );
 
 		AEAUDIOSAMPLE * ret = AE_allocInterfaceType ( AEAUDIOSAMPLE );

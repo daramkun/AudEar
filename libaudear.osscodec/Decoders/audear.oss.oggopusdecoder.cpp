@@ -132,7 +132,7 @@ public:
 	error_t readSample ( AEAUDIOSAMPLE ** sample )
 	{
 		int length = byterate / 100;
-		std::shared_ptr<int8_t []> buffer ( new int8_t [ byterate ] );
+		AEAUDIOBUFFER<int8_t> buffer ( byterate );
 		int bitstream;
 		AETIMESPAN current = AETIMESPAN_initializeWithSeconds ( op_pcm_tell ( file ) / ( float ) samplerate );
 		long result = op_read ( file, ( int16_t * ) &buffer [ 0 ], length / 2, &bitstream );
@@ -145,7 +145,7 @@ public:
 		result *= ( channels * 2 );
 
 		AEAUDIOSAMPLE * ret = AE_allocInterfaceType ( AEAUDIOSAMPLE );
-		ret->object = new __OggOpusAudioSample ( &buffer [ 0 ], result, current, AETIMESPAN_initializeWithSeconds ( result / ( float ) byterate ) );
+		ret->object = new __OggOpusAudioSample ( buffer, result, current, AETIMESPAN_initializeWithSeconds ( result / ( float ) byterate ) );
 		ret->free = [] ( void * obj ) { delete reinterpret_cast< __OggOpusAudioSample* >( obj ); };
 		ret->tag = "AudEar Open Source Software CODEC OggOpus Audio Decoder's Sample";
 		ret->getSampleTime = [] ( void * obj, AETIMESPAN * timeSpan ) { return reinterpret_cast< __OggOpusAudioSample* >( obj )->getSampleTime ( timeSpan ); };
