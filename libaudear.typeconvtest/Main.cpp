@@ -23,8 +23,8 @@
 
 #define SAMPLE_CHANNELS										2
 #define SAMPLE_SIZE											48000
-#define SAMPLE_SOURCE_TYPE									int16_t
-#define SAMPLE_DESTINATION_TYPE								float
+#define SAMPLE_SOURCE_TYPE									int8_t
+#define SAMPLE_DESTINATION_TYPE								int32_t
 
 void __check_valid ( const __TC_SAMPLE_CONVERTERS & converters, const SAMPLE_SOURCE_TYPE * source1, SAMPLE_SOURCE_TYPE * source2, SAMPLE_DESTINATION_TYPE * destination )
 {
@@ -37,7 +37,7 @@ void __check_valid ( const __TC_SAMPLE_CONVERTERS & converters, const SAMPLE_SOU
 		SAMPLE_SIZE * SAMPLE_CHANNELS * sizeof ( SAMPLE_SOURCE_TYPE ),
 		SAMPLE_SIZE * SAMPLE_CHANNELS * sizeof ( SAMPLE_DESTINATION_TYPE ) ) )
 	{
-		printf ( "F(Faild call S->D)\n" );
+		printf ( "F(Failed call S->D)\n" );
 		return;
 	}
 
@@ -46,7 +46,7 @@ void __check_valid ( const __TC_SAMPLE_CONVERTERS & converters, const SAMPLE_SOU
 		SAMPLE_SIZE * SAMPLE_CHANNELS * sizeof ( SAMPLE_DESTINATION_TYPE ),
 		SAMPLE_SIZE * SAMPLE_CHANNELS * sizeof ( SAMPLE_SOURCE_TYPE ) ) )
 	{
-		printf ( "F(Faild call D->S)\n" );
+		printf ( "F(Failed call D->S)\n" );
 		return;
 	}
 
@@ -138,8 +138,14 @@ int main ( void )
 		else
 		{
 			for ( int i = 0; i < SAMPLE_SIZE * SAMPLE_CHANNELS; ++i )
-				source1 [ i ] = rand () / ( float ) INT_MAX;
+				source1 [ i ] = ( SAMPLE_SOURCE_TYPE ) ( rand () / ( float ) INT_MAX );
 		}
+	}
+	else
+	{
+		int value = ( int ) pow ( 2, sizeof ( SAMPLE_DESTINATION_TYPE ) * 8 - 1 ) - 1;
+		for ( int i = 0; i < SAMPLE_SIZE * SAMPLE_CHANNELS; ++i )
+			source1 [ i ] = rand () % value;
 	}
 
 	printf ( "\n== Plain C++ Code ==\n" );

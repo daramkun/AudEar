@@ -12,6 +12,7 @@ extern "C"
 
 #include "audear.struct.h"
 #include "audear.interface.h"
+#include "audear.gaming.h"
 
 #ifdef __cplusplus
 }
