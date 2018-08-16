@@ -1055,27 +1055,59 @@ template<> static inline bool __TC_sample_convert_avx<int16_t, float> ( const vo
 ////////////////////////////////////////////////////////////
 // 32-bit to
 ////////////////////////////////////////////////////////////
-template<> static inline bool __TC_sample_convert_avx<int32_t, int24_t> ( const void * src, void * dest, int64_t srcByteCount, int64_t destByteSize ) noexcept
+template<> static inline bool __TC_sample_convert_avx<int32_t, int8_t> ( const void * src, void * dest, int64_t srcByteCount, int64_t destByteSize ) noexcept
 {
-	static const __m256i i32_to_i24_shuffle = _mm256_set_epi8 ( -1, -1, -1, -1, -1, -1, -1, -1, 30, 29, 28, 26, 25, 24, 22, 21, 20, 18, 17, 16, 14, 13, 12, 10, 9, 8, 6, 5, 4, 2, 1, 0 );
+	static __m256i i32_to_i16_shuffle = _mm256_setr_epi8 (
+		0, 4, 8, 12, 16, 20, 24, 28,
+		-1, -1, -1, -1, -1, -1, -1, -1,
+		-1, -1, -1, -1, -1, -1, -1, -1,
+		-1, -1, -1, -1, -1, -1, -1, -1 );
 
-	if ( srcByteCount * 3 > destByteSize * 4 )
+	if ( srcByteCount > destByteSize * 4 )
 		return false;
 
 	int8_t arr [ 32 ];
 
 	int32_t * srcBuffer = ( int32_t * ) src;
-	int24_t * destBuffer = ( int24_t * ) dest;
+	int8_t * destBuffer = ( int8_t * ) dest;
 	int64_t loopCount = srcByteCount / sizeof ( int32_t );
 	int64_t SIMDLoopCount = loopCount & AVX_CONVERT_COUNT_UNIT;
 	for ( int64_t i = 0; i < SIMDLoopCount; i += 8 )
 	{
-		__m256i loaded = _mm256_srai_epi32 ( _mm256_load_si256 ( ( const __m256i * ) &srcBuffer [ i ] ), 8 );
- 		_mm256_store_si256 ( ( __m256i* ) arr, _mm256_shuffle_epi8 ( loaded, i32_to_i24_shuffle ) );
-		memcpy ( destBuffer + i, arr, 8 * sizeof ( int24_t ) );
+		__m256i loaded = _mm256_srai_epi32 ( _mm256_load_si256 ( ( const __m256i * ) &srcBuffer [ i ] ), 24 );
+		_mm256_store_si256 ( ( __m256i* )arr, _mm256_shuffle_epi8 ( loaded, i32_to_i16_shuffle ) );
+		memcpy ( destBuffer + i, arr, 8 );
 	}
 	for ( int64_t i = SIMDLoopCount; i < loopCount; ++i )
-		destBuffer [ i ] = __TC_convert<int32_t, int24_t> ( srcBuffer [ i ] );
+		destBuffer [ i ] = __TC_convert<int32_t, int8_t> ( srcBuffer [ i ] );
+
+	return true;
+}
+template<> static inline bool __TC_sample_convert_avx<int32_t, int16_t> ( const void * src, void * dest, int64_t srcByteCount, int64_t destByteSize ) noexcept
+{
+	static __m256i i32_to_i16_shuffle = _mm256_setr_epi8 (
+		0, 1, 4, 5, 8, 9, 12, 13,
+		16, 17, 20, 21, 24, 25, 28, 29,
+		-1, -1, -1, -1, -1, -1, -1, -1,
+		-1, -1, -1, -1, -1, -1, -1, -1 );
+
+	if ( srcByteCount > destByteSize * 2 )
+		return false;
+
+	int16_t arr [ 16 ];
+
+	int32_t * srcBuffer = ( int32_t * ) src;
+	int16_t * destBuffer = ( int16_t * ) dest;
+	int64_t loopCount = srcByteCount / sizeof ( int32_t );
+	int64_t SIMDLoopCount = loopCount & AVX_CONVERT_COUNT_UNIT;
+	for ( int64_t i = 0; i < SIMDLoopCount; i += 8 )
+	{
+		__m256i loaded = _mm256_srai_epi32 ( _mm256_load_si256 ( ( const __m256i * ) &srcBuffer [ i ] ), 16 );
+		_mm256_store_si256 ( ( __m256i* )arr, _mm256_shuffle_epi8 ( loaded, i32_to_i16_shuffle ) );
+		memcpy ( destBuffer + i, arr, 16 );
+	}
+	for ( int64_t i = SIMDLoopCount; i < loopCount; ++i )
+		destBuffer [ i ] = __TC_convert<int32_t, int16_t> ( srcBuffer [ i ] );
 
 	return true;
 }
@@ -1121,9 +1153,9 @@ static const __TC_SAMPLE_CONVERTERS __g_TC_avx_converters = {
 	__TC_sample_convert_sse<int24_t, int32_t>,
 
 	__TC_sample_convert_avx<int32_t, float>,
-	__TC_sample_convert_sse<int32_t, int8_t>,
-	__TC_sample_convert_sse<int32_t, int16_t>,
-	__TC_sample_convert_avx<int32_t, int24_t>,
+	__TC_sample_convert_avx<int32_t, int8_t>,
+	__TC_sample_convert_avx<int32_t, int16_t>,
+	__TC_sample_convert_sse<int32_t, int24_t>,
 };
 #else
 static const __TC_SAMPLE_CONVERTERS __g_TC_avx_converters = {};

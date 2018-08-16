@@ -23,8 +23,8 @@
 
 #define SAMPLE_CHANNELS										2
 #define SAMPLE_SIZE											48000
-#define SAMPLE_SOURCE_TYPE									int8_t
-#define SAMPLE_DESTINATION_TYPE								int32_t
+#define SAMPLE_SOURCE_TYPE									int32_t
+#define SAMPLE_DESTINATION_TYPE								int8_t
 
 void __check_valid ( const __TC_SAMPLE_CONVERTERS & converters, const SAMPLE_SOURCE_TYPE * source1, SAMPLE_SOURCE_TYPE * source2, SAMPLE_DESTINATION_TYPE * destination )
 {
@@ -96,8 +96,8 @@ void __measure ( const __TC_SAMPLE_CONVERTERS & converters )
 
 	using namespace std;
 
-	shared_ptr<SAMPLE_SOURCE_TYPE []> source ( new SAMPLE_SOURCE_TYPE [ SAMPLE_SIZE * SAMPLE_CHANNELS ] );
-	shared_ptr<SAMPLE_DESTINATION_TYPE []> destination ( new SAMPLE_DESTINATION_TYPE [ SAMPLE_SIZE * SAMPLE_CHANNELS ] );
+	AEAUDIOBUFFER<SAMPLE_SOURCE_TYPE> source ( SAMPLE_SIZE * SAMPLE_CHANNELS );
+	AEAUDIOBUFFER<SAMPLE_DESTINATION_TYPE> destination ( SAMPLE_SIZE * SAMPLE_CHANNELS );
 	
 	__TypeConverterFunction converter = converters.get_converter<SAMPLE_SOURCE_TYPE, SAMPLE_DESTINATION_TYPE> ();
 	for ( int i = 0; i < LOOP_COUNT; ++i )
